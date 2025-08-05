@@ -15,6 +15,9 @@ public class Application extends BaseEntity {
     @Column(name = "cv_file_id", columnDefinition = "char", length = 36)
     private String cvFileId;
 
+    @Column(name = "user_id", columnDefinition = "char", length = 36)
+    private String userId;
+
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status;
 

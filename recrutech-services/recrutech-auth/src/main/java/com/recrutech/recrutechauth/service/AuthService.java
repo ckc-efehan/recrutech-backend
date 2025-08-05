@@ -80,27 +80,27 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
         try {
             // Validate password
-            List<String> passwordErrors = passwordValidator.validate(request.getPassword());
+            List<String> passwordErrors = passwordValidator.validate(request.password());
             if (!passwordErrors.isEmpty()) {
                 throw new RegistrationException("Password validation failed", passwordErrors);
             }
             
             // Check if username or email already exists
-            if (userRepository.existsByUsername(request.getUsername())) {
+            if (userRepository.existsByUsername(request.username())) {
                 throw new RegistrationException("Username is already taken");
             }
 
-            if (userRepository.existsByEmail(request.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
                 throw new RegistrationException("Email is already in use");
             }
 
             // Create new user
             User user = new User();
-            user.setUsername(request.getUsername());
-            user.setEmail(request.getEmail());
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setFirstName(request.getFirstName());
-            user.setLastName(request.getLastName());
+            user.setUsername(request.username());
+            user.setEmail(request.email());
+            user.setPassword(passwordEncoder.encode(request.password()));
+            user.setFirstName(request.firstName());
+            user.setLastName(request.lastName());
 
             Set<Role> roles = new HashSet<>();
             Role userRole = roleRepository.findByName("ROLE_USER")
@@ -113,7 +113,7 @@ public class AuthService {
 
             // Authenticate the new user
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -127,15 +127,15 @@ public class AuthService {
                     .toArray(String[]::new);
 
             // Build response
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .tokenType("Bearer")
-                    .expiresIn(jwtExpiration / 1000) // Convert to seconds
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .roles(userRoles)
-                    .build();
+            return new AuthResponse(
+                    accessToken,
+                    refreshToken,
+                    "Bearer",
+                    jwtExpiration / 1000, // Convert to seconds
+                    user.getUsername(),
+                    user.getEmail(),
+                    userRoles
+            );
         } catch (RegistrationException e) {
             throw e;
         } catch (Exception e) {
@@ -154,27 +154,27 @@ public class AuthService {
     public AuthResponse registerHR(HRRegisterRequest request) {
         try {
             // Validate password
-            List<String> passwordErrors = passwordValidator.validate(request.getPassword());
+            List<String> passwordErrors = passwordValidator.validate(request.password());
             if (!passwordErrors.isEmpty()) {
                 throw new RegistrationException("Password validation failed", passwordErrors);
             }
             
             // Check if username or email already exists
-            if (userRepository.existsByUsername(request.getUsername())) {
+            if (userRepository.existsByUsername(request.username())) {
                 throw new RegistrationException("Username is already taken");
             }
 
-            if (userRepository.existsByEmail(request.getEmail())) {
+            if (userRepository.existsByEmail(request.email())) {
                 throw new RegistrationException("Email is already in use");
             }
 
             // Create new HR user
             User user = new User();
-            user.setUsername(request.getUsername());
-            user.setEmail(request.getEmail());
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setFirstName(request.getFirstName());
-            user.setLastName(request.getLastName());
+            user.setUsername(request.username());
+            user.setEmail(request.email());
+            user.setPassword(passwordEncoder.encode(request.password()));
+            user.setFirstName(request.firstName());
+            user.setLastName(request.lastName());
 
             // Automatically assign HR role
             Set<Role> roles = new HashSet<>();
@@ -188,7 +188,7 @@ public class AuthService {
 
             // Authenticate the new HR user
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -202,15 +202,15 @@ public class AuthService {
                     .toArray(String[]::new);
 
             // Build response
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .tokenType("Bearer")
-                    .expiresIn(jwtExpiration / 1000) // Convert to seconds
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .roles(userRoles)
-                    .build();
+            return new AuthResponse(
+                    accessToken,
+                    refreshToken,
+                    "Bearer",
+                    jwtExpiration / 1000, // Convert to seconds
+                    user.getUsername(),
+                    user.getEmail(),
+                    userRoles
+            );
         } catch (RegistrationException e) {
             throw e;
         } catch (Exception e) {
@@ -229,12 +229,12 @@ public class AuthService {
         try {
             // Authenticate user
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+                    new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             // Get user details
-            User user = userRepository.findByUsername(request.getUsername())
+            User user = userRepository.findByUsername(request.username())
                     .orElseThrow(() -> new AuthenticationException("User not found"));
 
             // Generate tokens
@@ -247,15 +247,15 @@ public class AuthService {
                     .toArray(String[]::new);
 
             // Build response
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .tokenType("Bearer")
-                    .expiresIn(jwtExpiration / 1000) // Convert to seconds
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .roles(userRoles)
-                    .build();
+            return new AuthResponse(
+                    accessToken,
+                    refreshToken,
+                    "Bearer",
+                    jwtExpiration / 1000, // Convert to seconds
+                    user.getUsername(),
+                    user.getEmail(),
+                    userRoles
+            );
         } catch (BadCredentialsException e) {
             throw new AuthenticationException("Invalid username or password", e);
         } catch (AuthenticationException e) {
@@ -294,15 +294,15 @@ public class AuthService {
                     .toArray(String[]::new);
             
             // Build response
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(newRefreshToken) // Return the new refresh token
-                    .tokenType("Bearer")
-                    .expiresIn(jwtExpiration / 1000) // Convert to seconds
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .roles(userRoles)
-                    .build();
+            return new AuthResponse(
+                    accessToken,
+                    newRefreshToken, // Return the new refresh token
+                    "Bearer",
+                    jwtExpiration / 1000, // Convert to seconds
+                    user.getUsername(),
+                    user.getEmail(),
+                    userRoles
+            );
         } catch (TokenException e) {
             throw e;
         } catch (AuthenticationException e) {

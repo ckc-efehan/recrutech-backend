@@ -49,32 +49,27 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         // Create test data
-        registerRequest = RegisterRequest.builder()
-                .username("testuser")
-                .email("test@example.com")
-                .password("Password123!")
-                .firstName("Test")
-                .lastName("User")
-                .build();
+        registerRequest = new RegisterRequest(
+                "testuser",
+                "test@example.com",
+                "Password123!",
+                "Test",
+                "User"
+        );
 
-        loginRequest = LoginRequest.builder()
-                .username("testuser")
-                .password("Password123!")
-                .build();
+        loginRequest = new LoginRequest("testuser", "Password123!");
 
-        refreshTokenRequest = RefreshTokenRequest.builder()
-                .refreshToken("refresh-token")
-                .build();
+        refreshTokenRequest = new RefreshTokenRequest("refresh-token");
 
-        authResponse = AuthResponse.builder()
-                .accessToken("access-token")
-                .refreshToken("refresh-token")
-                .tokenType("Bearer")
-                .expiresIn(3600L)
-                .username("testuser")
-                .email("test@example.com")
-                .roles(new String[]{"ROLE_USER"})
-                .build();
+        authResponse = new AuthResponse(
+                "access-token",
+                "refresh-token",
+                "Bearer",
+                3600L,
+                "testuser",
+                "test@example.com",
+                new String[]{"ROLE_USER"}
+        );
     }
 
     @Test

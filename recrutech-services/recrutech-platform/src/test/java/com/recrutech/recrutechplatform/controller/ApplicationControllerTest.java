@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recrutech.recrutechplatform.controller.ApplicationController;
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
+import com.recrutech.recrutechplatform.dto.application.ApplicationSummaryResponse;
+import com.recrutech.recrutechplatform.dto.application.JobInfo;
+import com.recrutech.recrutechplatform.dto.application.UserInfo;
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
 import com.recrutech.common.exception.GlobalExceptionHandler;
 import com.recrutech.common.exception.NotFoundException;
@@ -54,17 +57,22 @@ class ApplicationControllerTest {
         objectMapper = new ObjectMapper();
         testDateTime = LocalDateTime.now();
 
-        applicationRequest = new ApplicationRequest();
-        applicationRequest.setCvFileId("123e4567-e89b-12d3-a456-426614174000");
+        applicationRequest = new ApplicationRequest(
+                "123e4567-e89b-12d3-a456-426614174000",
+                "user-id-123",
+                "John",
+                "Doe"
+        );
 
-        applicationResponse = ApplicationResponse.builder()
-                .id("app-id-123")
-                .jobId("job-id-456")
-                .cvFileId("123e4567-e89b-12d3-a456-426614174000")
-                .status(ApplicationStatus.RECEIVED)
-                .viewedByHr(false)
-                .createdAt(testDateTime)
-                .build();
+        applicationResponse = new ApplicationResponse(
+                "app-id-123",
+                new JobInfo("job-id-456", "Software Engineer", "Berlin"),
+                new UserInfo("user-id-123", "John", "Doe"),
+                "123e4567-e89b-12d3-a456-426614174000",
+                ApplicationStatus.RECEIVED,
+                false,
+                testDateTime
+        );
     }
 
     @Test
@@ -80,7 +88,7 @@ class ApplicationControllerTest {
                 .content(objectMapper.writeValueAsString(applicationRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", is("app-id-123")))
-                .andExpect(jsonPath("$.jobId", is("job-id-456")))
+                .andExpect(jsonPath("$.job.id", is("job-id-456")))
                 .andExpect(jsonPath("$.cvFileId", is("123e4567-e89b-12d3-a456-426614174000")))
                 .andExpect(jsonPath("$.status", is("RECEIVED")))
                 .andExpect(jsonPath("$.viewedByHr", is(false)));
@@ -108,33 +116,30 @@ class ApplicationControllerTest {
     @Test
     void getAllApplications_ShouldReturnListOfApplicationResponses() throws Exception {
         // Arrange
-        ApplicationResponse applicationResponse2 = ApplicationResponse.builder()
-                .id("app-id-789")
-                .jobId("job-id-101")
-                .cvFileId("123e4567-e89b-12d3-a456-426614174001")
-                .status(ApplicationStatus.UNDER_REVIEW)
-                .viewedByHr(true)
-                .createdAt(testDateTime)
-                .build();
+        String jobId = "job-id-456";
+        ApplicationSummaryResponse applicationSummaryResponse1 = new ApplicationSummaryResponse(
+                "app-id-123", new JobInfo("job-id-456", "Software Engineer", "Berlin"), new UserInfo("user-id-1", "John", "Doe"), "RECEIVED");
+        ApplicationSummaryResponse applicationSummaryResponse2 = new ApplicationSummaryResponse(
+                "app-id-789", new JobInfo("job-id-101", "Data Analyst", "Munich"), new UserInfo("user-id-2", "Jane", "Smith"), "UNDER_REVIEW");
 
-        List<ApplicationResponse> applicationResponses = List.of(applicationResponse, applicationResponse2);
+        List<ApplicationSummaryResponse> applicationResponses = List.of(applicationSummaryResponse1, applicationSummaryResponse2);
         when(applicationService.getAllApplications()).thenReturn(applicationResponses);
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/applications")
+        mockMvc.perform(get("/api/v1/jobs/{jobId}/applications", jobId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].id", is("app-id-123")))
-                .andExpect(jsonPath("$[0].jobId", is("job-id-456")))
-                .andExpect(jsonPath("$[0].cvFileId", is("123e4567-e89b-12d3-a456-426614174000")))
+                .andExpect(jsonPath("$[0].job.id", is("job-id-456")))
+                .andExpect(jsonPath("$[0].job.title", is("Software Engineer")))
+                .andExpect(jsonPath("$[0].job.location", is("Berlin")))
                 .andExpect(jsonPath("$[0].status", is("RECEIVED")))
-                .andExpect(jsonPath("$[0].viewedByHr", is(false)))
                 .andExpect(jsonPath("$[1].id", is("app-id-789")))
-                .andExpect(jsonPath("$[1].jobId", is("job-id-101")))
-                .andExpect(jsonPath("$[1].cvFileId", is("123e4567-e89b-12d3-a456-426614174001")))
-                .andExpect(jsonPath("$[1].status", is("UNDER_REVIEW")))
-                .andExpect(jsonPath("$[1].viewedByHr", is(true)));
+                .andExpect(jsonPath("$[1].job.id", is("job-id-101")))
+                .andExpect(jsonPath("$[1].job.title", is("Data Analyst")))
+                .andExpect(jsonPath("$[1].job.location", is("Munich")))
+                .andExpect(jsonPath("$[1].status", is("UNDER_REVIEW")));
 
         verify(applicationService, times(1)).getAllApplications();
     }
@@ -142,10 +147,11 @@ class ApplicationControllerTest {
     @Test
     void getAllApplications_WhenNoApplications_ShouldReturnEmptyList() throws Exception {
         // Arrange
-        when(applicationService.getAllApplications()).thenReturn(List.of());
+        String jobId = "job-id-456";
+        when(applicationService.getAllApplications()).thenReturn(List.<ApplicationSummaryResponse>of());
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/applications")
+        mockMvc.perform(get("/api/v1/jobs/{jobId}/applications", jobId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
@@ -156,15 +162,18 @@ class ApplicationControllerTest {
     @Test
     void getApplicationById_WhenApplicationExists_ShouldReturnApplicationResponse() throws Exception {
         // Arrange
+        String jobId = "job-id-456";
         String applicationId = "app-id-123";
         when(applicationService.getApplicationById(applicationId)).thenReturn(applicationResponse);
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/applications/{applicationId}", applicationId)
+        mockMvc.perform(get("/api/v1/jobs/{jobId}/applications/{applicationId}", jobId, applicationId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is("app-id-123")))
-                .andExpect(jsonPath("$.jobId", is("job-id-456")))
+                .andExpect(jsonPath("$.job.id", is("job-id-456")))
+                .andExpect(jsonPath("$.job.title", is("Software Engineer")))
+                .andExpect(jsonPath("$.job.location", is("Berlin")))
                 .andExpect(jsonPath("$.cvFileId", is("123e4567-e89b-12d3-a456-426614174000")))
                 .andExpect(jsonPath("$.status", is("RECEIVED")))
                 .andExpect(jsonPath("$.viewedByHr", is(false)));
@@ -175,12 +184,13 @@ class ApplicationControllerTest {
     @Test
     void getApplicationById_WhenApplicationDoesNotExist_ShouldReturnNotFound() throws Exception {
         // Arrange
+        String jobId = "job-id-456";
         String applicationId = "non-existent-app-id";
         when(applicationService.getApplicationById(applicationId))
                 .thenThrow(new NotFoundException("Application not found with id: " + applicationId));
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/applications/{applicationId}", applicationId)
+        mockMvc.perform(get("/api/v1/jobs/{jobId}/applications/{applicationId}", jobId, applicationId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message", is("Application not found with id: " + applicationId)));
@@ -192,14 +202,15 @@ class ApplicationControllerTest {
     void submitApplication_WithDifferentStatus_ShouldReturnCorrectStatus() throws Exception {
         // Arrange
         String jobId = "job-id-456";
-        ApplicationResponse reviewResponse = ApplicationResponse.builder()
-                .id("app-id-123")
-                .jobId(jobId)
-                .cvFileId("123e4567-e89b-12d3-a456-426614174000")
-                .status(ApplicationStatus.UNDER_REVIEW)
-                .viewedByHr(true)
-                .createdAt(testDateTime)
-                .build();
+        ApplicationResponse reviewResponse = new ApplicationResponse(
+                "app-id-123",
+                new JobInfo(jobId, "Software Engineer", "Berlin"),
+                new UserInfo("user-id-123", "John", "Doe"),
+                "123e4567-e89b-12d3-a456-426614174000",
+                ApplicationStatus.UNDER_REVIEW,
+                true,
+                testDateTime
+        );
 
         when(applicationService.createApplication(eq(jobId), any(ApplicationRequest.class)))
                 .thenReturn(reviewResponse);
@@ -210,7 +221,7 @@ class ApplicationControllerTest {
                 .content(objectMapper.writeValueAsString(applicationRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id", is("app-id-123")))
-                .andExpect(jsonPath("$.jobId", is(jobId)))
+                .andExpect(jsonPath("$.job.id", is(jobId)))
                 .andExpect(jsonPath("$.status", is("UNDER_REVIEW")))
                 .andExpect(jsonPath("$.viewedByHr", is(true)));
 
@@ -220,38 +231,19 @@ class ApplicationControllerTest {
     @Test
     void getAllApplications_WithDifferentStatuses_ShouldReturnAllStatuses() throws Exception {
         // Arrange
-        ApplicationResponse receivedApp = ApplicationResponse.builder()
-                .id("app-id-1")
-                .jobId("job-id-1")
-                .cvFileId("123e4567-e89b-12d3-a456-426614174001")
-                .status(ApplicationStatus.RECEIVED)
-                .viewedByHr(false)
-                .createdAt(testDateTime)
-                .build();
+        ApplicationSummaryResponse receivedApp = new ApplicationSummaryResponse(
+                "app-id-1", new JobInfo("job-id-1", "Frontend Developer", "Hamburg"), new UserInfo("user-id-1", "Alice", "Johnson"), "RECEIVED");
+        ApplicationSummaryResponse invitedApp = new ApplicationSummaryResponse(
+                "app-id-2", new JobInfo("job-id-2", "Backend Developer", "Frankfurt"), new UserInfo("user-id-2", "Bob", "Wilson"), "INVITED");
+        ApplicationSummaryResponse rejectedApp = new ApplicationSummaryResponse(
+                "app-id-3", new JobInfo("job-id-3", "DevOps Engineer", "Cologne"), new UserInfo("user-id-3", "Charlie", "Brown"), "REJECTED");
 
-        ApplicationResponse invitedApp = ApplicationResponse.builder()
-                .id("app-id-2")
-                .jobId("job-id-2")
-                .cvFileId("123e4567-e89b-12d3-a456-426614174002")
-                .status(ApplicationStatus.INVITED)
-                .viewedByHr(true)
-                .createdAt(testDateTime)
-                .build();
-
-        ApplicationResponse rejectedApp = ApplicationResponse.builder()
-                .id("app-id-3")
-                .jobId("job-id-3")
-                .cvFileId("123e4567-e89b-12d3-a456-426614174003")
-                .status(ApplicationStatus.REJECTED)
-                .viewedByHr(true)
-                .createdAt(testDateTime)
-                .build();
-
-        List<ApplicationResponse> applicationResponses = List.of(receivedApp, invitedApp, rejectedApp);
+        List<ApplicationSummaryResponse> applicationResponses = List.of(receivedApp, invitedApp, rejectedApp);
         when(applicationService.getAllApplications()).thenReturn(applicationResponses);
 
         // Act & Assert
-        mockMvc.perform(get("/api/v1/applications")
+        String jobId = "job-id-456";
+        mockMvc.perform(get("/api/v1/jobs/{jobId}/applications", jobId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)))

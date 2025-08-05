@@ -34,12 +34,12 @@ public class FileStorageController {
     public ResponseEntity<FileMetadataResponse> uploadFile(@RequestParam("file") MultipartFile file) {
         FileMetadata fileMetadata = fileStorageService.storeFile(file);
 
-        FileMetadataResponse response = FileMetadataResponse.builder()
-                .fileId(fileMetadata.getId())
-                .fileName(fileMetadata.getFileName())
-                .contentType(fileMetadata.getContentType())
-                .size(fileMetadata.getSize())
-                .build();
+        FileMetadataResponse response = new FileMetadataResponse(
+                fileMetadata.getId(),
+                fileMetadata.getFileName(),
+                fileMetadata.getContentType(),
+                fileMetadata.getSize()
+        );
 
         return ResponseEntity.ok(response);
     }

@@ -45,7 +45,7 @@ import java.util.List;
  * This class configures Spring Security with JWT authentication.
  * Uses an asymmetric key (RSA) approach for enhanced security.
  */
-@Configuration
+@Configuration("authSecurityConfig")
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {

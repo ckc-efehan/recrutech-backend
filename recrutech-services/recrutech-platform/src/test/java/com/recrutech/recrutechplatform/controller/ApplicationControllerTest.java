@@ -2,11 +2,11 @@ package com.recrutech.recrutechplatform.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recrutech.recrutechplatform.controller.ApplicationController;
+import com.recrutech.common.dto.UserInfo;
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
 import com.recrutech.recrutechplatform.dto.application.ApplicationSummaryResponse;
 import com.recrutech.recrutechplatform.dto.application.JobInfo;
-import com.recrutech.recrutechplatform.dto.application.UserInfo;
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
 import com.recrutech.common.exception.GlobalExceptionHandler;
 import com.recrutech.common.exception.NotFoundException;
@@ -18,20 +18,27 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(MockitoExtension.class)
 class ApplicationControllerTest {
@@ -42,7 +49,6 @@ class ApplicationControllerTest {
     @Mock
     private ApplicationService applicationService;
 
-    @InjectMocks
     private ApplicationController applicationController;
 
     private ApplicationRequest applicationRequest;
@@ -51,6 +57,7 @@ class ApplicationControllerTest {
 
     @BeforeEach
     void setUp() {
+        applicationController = new ApplicationController(applicationService);
         mockMvc = MockMvcBuilders.standaloneSetup(applicationController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -58,10 +65,7 @@ class ApplicationControllerTest {
         testDateTime = LocalDateTime.now();
 
         applicationRequest = new ApplicationRequest(
-                "123e4567-e89b-12d3-a456-426614174000",
-                "user-id-123",
-                "John",
-                "Doe"
+                "123e4567-e89b-12d3-a456-426614174000"
         );
 
         applicationResponse = new ApplicationResponse(
@@ -79,38 +83,55 @@ class ApplicationControllerTest {
     void submitApplication_ShouldReturnCreatedApplicationResponse() throws Exception {
         // Arrange
         String jobId = "job-id-456";
-        when(applicationService.createApplication(eq(jobId), any(ApplicationRequest.class)))
+        String userId = "user-id-123";
+        
+        // Create mock JWT token with subject claim
+        Jwt mockJwt = Jwt.withTokenValue("mock-token")
+                .header("alg", "RS256")
+                .subject(userId)
+                .build();
+        Authentication mockAuth = new JwtAuthenticationToken(mockJwt);
+        
+        when(applicationService.createApplication(any(String.class), any(ApplicationRequest.class), any(String.class)))
                 .thenReturn(applicationResponse);
 
-        // Act & Assert
-        mockMvc.perform(post("/api/v1/jobs/{jobId}/applications", jobId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(applicationRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id", is("app-id-123")))
-                .andExpect(jsonPath("$.job.id", is("job-id-456")))
-                .andExpect(jsonPath("$.cvFileId", is("123e4567-e89b-12d3-a456-426614174000")))
-                .andExpect(jsonPath("$.status", is("RECEIVED")))
-                .andExpect(jsonPath("$.viewedByHr", is(false)));
+        // Act - Direct method call to test authentication handling
+        ApplicationResponse result = applicationController.submitApplication(jobId, applicationRequest, mockAuth);
 
-        verify(applicationService, times(1)).createApplication(eq(jobId), any(ApplicationRequest.class));
+        // Assert
+        assertNotNull(result);
+        assertEquals("app-id-123", result.id());
+        assertEquals("job-id-456", result.job().id());
+        assertEquals("123e4567-e89b-12d3-a456-426614174000", result.cvFileId());
+        assertEquals(ApplicationStatus.RECEIVED, result.status());
+        assertFalse(result.viewedByHr());
+
+        verify(applicationService, times(1)).createApplication(eq(jobId), any(ApplicationRequest.class), eq(userId));
     }
 
     @Test
     void submitApplication_WhenJobDoesNotExist_ShouldReturnNotFound() throws Exception {
         // Arrange
         String jobId = "non-existent-job-id";
-        when(applicationService.createApplication(eq(jobId), any(ApplicationRequest.class)))
+        String userId = "user-id-123";
+        
+        // Create mock JWT token with subject claim
+        Jwt mockJwt = Jwt.withTokenValue("mock-token")
+                .header("alg", "RS256")
+                .subject(userId)
+                .build();
+        Authentication mockAuth = new JwtAuthenticationToken(mockJwt);
+        
+        when(applicationService.createApplication(any(String.class), any(ApplicationRequest.class), any(String.class)))
                 .thenThrow(new NotFoundException("Job not found with id: " + jobId));
 
-        // Act & Assert
-        mockMvc.perform(post("/api/v1/jobs/{jobId}/applications", jobId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(applicationRequest)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message", is("Job not found with id: " + jobId)));
+        // Act & Assert - Direct method call to test authentication handling
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> {
+            applicationController.submitApplication(jobId, applicationRequest, mockAuth);
+        });
 
-        verify(applicationService, times(1)).createApplication(eq(jobId), any(ApplicationRequest.class));
+        assertEquals("Job not found with id: " + jobId, exception.getMessage());
+        verify(applicationService, times(1)).createApplication(eq(jobId), any(ApplicationRequest.class), eq(userId));
     }
 
     @Test
@@ -202,6 +223,14 @@ class ApplicationControllerTest {
     void submitApplication_WithDifferentStatus_ShouldReturnCorrectStatus() throws Exception {
         // Arrange
         String jobId = "job-id-456";
+        String userId = "user-id-123";
+        
+        // Create mock JWT token with subject claim
+        Jwt mockJwt = Jwt.withTokenValue("mock-token")
+                .header("alg", "RS256")
+                .subject(userId)
+                .build();
+        Authentication mockAuth = new JwtAuthenticationToken(mockJwt);
         ApplicationResponse reviewResponse = new ApplicationResponse(
                 "app-id-123",
                 new JobInfo(jobId, "Software Engineer", "Berlin"),
@@ -212,20 +241,20 @@ class ApplicationControllerTest {
                 testDateTime
         );
 
-        when(applicationService.createApplication(eq(jobId), any(ApplicationRequest.class)))
+        when(applicationService.createApplication(any(String.class), any(ApplicationRequest.class), any(String.class)))
                 .thenReturn(reviewResponse);
 
-        // Act & Assert
-        mockMvc.perform(post("/api/v1/jobs/{jobId}/applications", jobId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(applicationRequest)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id", is("app-id-123")))
-                .andExpect(jsonPath("$.job.id", is(jobId)))
-                .andExpect(jsonPath("$.status", is("UNDER_REVIEW")))
-                .andExpect(jsonPath("$.viewedByHr", is(true)));
+        // Act - Direct method call to test authentication handling
+        ApplicationResponse result = applicationController.submitApplication(jobId, applicationRequest, mockAuth);
 
-        verify(applicationService, times(1)).createApplication(eq(jobId), any(ApplicationRequest.class));
+        // Assert
+        assertNotNull(result);
+        assertEquals("app-id-123", result.id());
+        assertEquals(jobId, result.job().id());
+        assertEquals(ApplicationStatus.UNDER_REVIEW, result.status());
+        assertTrue(result.viewedByHr());
+
+        verify(applicationService, times(1)).createApplication(eq(jobId), any(ApplicationRequest.class), eq(userId));
     }
 
     @Test

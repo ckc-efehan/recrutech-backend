@@ -1,10 +1,11 @@
 package com.recrutech.recrutechplatform.service;
 
+import com.recrutech.common.dto.UserInfo;
 import com.recrutech.common.exception.NotFoundException;
+import com.recrutech.common.service.UserInfoService;
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
 import com.recrutech.recrutechplatform.dto.application.JobInfo;
-import com.recrutech.recrutechplatform.dto.application.UserInfo;
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
 import com.recrutech.recrutechplatform.model.Application;
 import com.recrutech.recrutechplatform.model.Job;
@@ -34,11 +35,15 @@ public class ApplicationServiceTest {
     @Mock
     private JobRepository jobRepository;
 
+    @Mock
+    private UserInfoService userInfoService;
+
     @InjectMocks
     private ApplicationService applicationService;
 
     private Job job;
     private String jobId;
+    private String userId;
     private String cvFileId;
     private ApplicationRequest applicationRequest;
 
@@ -46,6 +51,7 @@ public class ApplicationServiceTest {
     void setUp() {
         // Setup test data
         jobId = UUID.randomUUID().toString();
+        userId = UUID.randomUUID().toString();
         cvFileId = UUID.randomUUID().toString();
 
         job = new Job();
@@ -54,7 +60,7 @@ public class ApplicationServiceTest {
         job.setDescription("Job description");
         job.setLocation("Berlin");
 
-        applicationRequest = new ApplicationRequest(cvFileId, "user-123", "John", "Doe");
+        applicationRequest = new ApplicationRequest(cvFileId);
     }
 
     @Test
@@ -63,16 +69,20 @@ public class ApplicationServiceTest {
         Application savedApplication = new Application();
         savedApplication.setId(UUID.randomUUID().toString());
         savedApplication.setCvFileId(cvFileId);
+        savedApplication.setUserId(userId);
         savedApplication.setStatus(ApplicationStatus.RECEIVED);
         savedApplication.setViewedByHr(false);
         savedApplication.setJob(job);
         savedApplication.setCreatedAt(LocalDateTime.now());
 
+        UserInfo userInfo = new UserInfo(userId, "John", "Doe");
+
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        when(userInfoService.createUserInfo(userId)).thenReturn(userInfo);
         when(applicationRepository.save(any(Application.class))).thenReturn(savedApplication);
 
         // Act
-        ApplicationResponse response = applicationService.createApplication(jobId, applicationRequest);
+        ApplicationResponse response = applicationService.createApplication(jobId, applicationRequest, userId);
 
         // Assert
         assertNotNull(response);
@@ -82,8 +92,11 @@ public class ApplicationServiceTest {
         assertEquals(ApplicationStatus.RECEIVED, response.status());
         assertFalse(response.viewedByHr());
         assertNotNull(response.createdAt());
+        assertEquals("John", response.user().firstName());
+        assertEquals("Doe", response.user().lastName());
 
         verify(jobRepository).findById(jobId);
+        verify(userInfoService).createUserInfo(userId);
         verify(applicationRepository).save(any(Application.class));
     }
 
@@ -94,7 +107,7 @@ public class ApplicationServiceTest {
 
         // Act & Assert
         NotFoundException exception = assertThrows(NotFoundException.class, () -> {
-            applicationService.createApplication(jobId, applicationRequest);
+            applicationService.createApplication(jobId, applicationRequest, userId);
         });
 
         assertEquals("Job not found with id: " + jobId, exception.getMessage());
@@ -105,16 +118,15 @@ public class ApplicationServiceTest {
     @Test
     void createApplication_InvalidCvFileId() {
         // Arrange
-        ApplicationRequest invalidRequest = new ApplicationRequest("invalid-uuid", "user-123", "John", "Doe");
-        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        ApplicationRequest invalidRequest = new ApplicationRequest("invalid-uuid");
 
         // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> {
-            applicationService.createApplication(jobId, invalidRequest);
+            applicationService.createApplication(jobId, invalidRequest, userId);
         });
 
         assertTrue(exception.getMessage().contains("CV File ID"));
-        verify(jobRepository).findById(jobId);
+        verify(jobRepository, never()).findById(any());
         verify(applicationRepository, never()).save(any(Application.class));
     }
 }

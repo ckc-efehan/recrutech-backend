@@ -26,7 +26,7 @@ import java.util.Arrays;
  * Security configuration for the recrutech-platform service.
  * Configures JWT-based authentication as a resource server.
  */
-@Configuration
+@Configuration("platformSecurityConfig")
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {

@@ -73,13 +73,18 @@ public class JwtService {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(" "));
 
+        // Get user ID from database
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("recrutech-auth")
                 .issuedAt(now)
                 .expiresAt(now.plus(jwtExpiration, ChronoUnit.MILLIS))
-                .subject(authentication.getName())
+                .subject(user.getId()) // Use user ID instead of username
                 .audience(java.util.List.of(audience))
                 .claim("scope", scope)
+                .claim("username", authentication.getName()) // Keep username as separate claim
                 .id(UUID.randomUUID().toString())
                 .build();
 
@@ -97,22 +102,24 @@ public class JwtService {
         Instant now = Instant.now();
         String tokenId = UUID.randomUUID().toString();
 
+        // Get user ID from database
+        User user = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("recrutech-auth")
                 .issuedAt(now)
                 .expiresAt(now.plus(refreshExpiration, ChronoUnit.MILLIS))
-                .subject(authentication.getName())
+                .subject(user.getId()) // Use user ID instead of username
                 .audience(java.util.List.of(audience))
                 .claim("token_type", "refresh")
+                .claim("username", authentication.getName()) // Keep username as separate claim
                 .id(tokenId)
                 .build();
 
         String tokenValue = this.encoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
         
         // Store refresh token in database for revocation capability
-        User user = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(tokenValue);
         refreshToken.setUser(user);
@@ -148,7 +155,19 @@ public class JwtService {
      */
     public String extractUsername(String token) {
         Jwt jwt = validateToken(token);
-        return jwt.getSubject();
+        // Extract from username claim instead of subject (subject now contains user ID)
+        return jwt.getClaimAsString("username");
+    }
+    
+    /**
+     * Extracts the user ID from a JWT token.
+     *
+     * @param token the JWT token
+     * @return the user ID
+     */
+    public String extractUserId(String token) {
+        Jwt jwt = validateToken(token);
+        return jwt.getSubject(); // Now returns user ID
     }
     
     /**

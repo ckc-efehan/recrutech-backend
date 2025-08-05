@@ -1,5 +1,6 @@
 package com.recrutech.recrutechplatform.dto.application;
 
+import com.recrutech.common.dto.UserInfo;
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
 
 import java.time.LocalDateTime;

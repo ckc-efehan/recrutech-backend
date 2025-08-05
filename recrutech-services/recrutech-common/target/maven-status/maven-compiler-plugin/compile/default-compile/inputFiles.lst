@@ -1,10 +1,14 @@
+C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\dto\UserInfo.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\entity\BaseEntity.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\exception\GlobalExceptionHandler.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\exception\NotFoundException.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\exception\ValidationException.java
+C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\service\UserInfoService.java
+C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\service\UserService.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\util\EntityLifecycleUtil.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\util\EntityValidator.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\util\StringValidator.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\util\UuidGenerator.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\util\UuidValidator.java
+C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\validator\ApplicationValidator.java
 C:\Users\efeha\IdeaProjects\recrutech-backend\recrutech-services\recrutech-common\src\main\java\com\recrutech\common\validator\JobValidator.java

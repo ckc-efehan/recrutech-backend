@@ -14,6 +14,11 @@
         <option value="$PROJECT_DIR$/recrutech-services/recrutech-notification/pom.xml" />
       </list>
     </option>
+    <option name="ignoredFiles">
+      <set>
+        <option value="$PROJECT_DIR$/recrutech-services/recrutech-notification/pom.xml" />
+      </set>
+    </option>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_23" default="true" project-jdk-name="23" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />

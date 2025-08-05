@@ -1,21 +1,12 @@
 package com.recrutech.recrutechplatform.dto.application;
 
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
-import lombok.Builder;
-import lombok.Data;
 
 import java.time.LocalDateTime;
 
 /**
  * DTO for sending application data to clients
  */
-@Data
-@Builder
-public class ApplicationResponse {
-    private String id;
-    private String jobId;
-    private String cvFileId;
-    private ApplicationStatus status;
-    private boolean viewedByHr;
-    private LocalDateTime createdAt;
+public record ApplicationResponse(String id, JobInfo job, UserInfo user, String cvFileId, 
+                                 ApplicationStatus status, boolean viewedByHr, LocalDateTime createdAt) {
 }

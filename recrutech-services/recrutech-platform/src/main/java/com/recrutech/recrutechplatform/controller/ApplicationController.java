@@ -2,6 +2,7 @@ package com.recrutech.recrutechplatform.controller;
 
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
+import com.recrutech.recrutechplatform.dto.application.ApplicationSummaryResponse;
 import com.recrutech.recrutechplatform.service.ApplicationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,7 +14,7 @@ import java.util.List;
  * Controller for handling application-related endpoints
  */
 @RestController
-@PreAuthorize("hasRole('APPLICANT') or hasRole('HR')") // Only applicants and HR can access these endpoints
+@PreAuthorize("hasRole('USER') or hasRole('HR')") // Only applicants and HR can access these endpoints
 @RequestMapping("/api/v1")
 public class ApplicationController {
 
@@ -37,15 +38,15 @@ public class ApplicationController {
         return applicationService.createApplication(jobId, applicationRequest);
     }
 
-    @GetMapping("/applications")
+    @GetMapping("/jobs/{jobId}/applications")
     @ResponseStatus(HttpStatus.OK)
-    public List<ApplicationResponse> getAllApplications() {
+    public List<ApplicationSummaryResponse> getAllApplications(@PathVariable String jobId) {
         return applicationService.getAllApplications();
     }
 
-    @GetMapping("/applications/{applicationId}")
+    @GetMapping("/jobs/{jobId}/applications/{applicationId}")
     @ResponseStatus(HttpStatus.OK)
-    public ApplicationResponse getApplicationById(@PathVariable String applicationId) {
+    public ApplicationResponse getApplicationById(@PathVariable String applicationId, @PathVariable String jobId) {
         return applicationService.getApplicationById(applicationId);
     }
 }

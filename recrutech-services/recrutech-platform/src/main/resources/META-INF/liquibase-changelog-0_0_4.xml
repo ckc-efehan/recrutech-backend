@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+#
+# Author: Efehan Cekic [efehan.cekic@student.htw-berlin.de]
+#
+ -->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="apmngm-backend-0.0.4-application-user-id" author="efehan.cekic@student.htw-berlin.de">
+        <addColumn tableName="application">
+            <column name="user_id" type="char(36)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="apmngm-backend-0.0.4-application-user-id-index" author="efehan.cekic@student.htw-berlin.de">
+        <createIndex tableName="application" indexName="IDX_APPLICATION_USER_ID">
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

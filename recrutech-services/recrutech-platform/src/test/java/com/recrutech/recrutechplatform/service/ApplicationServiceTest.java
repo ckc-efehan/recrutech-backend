@@ -3,6 +3,8 @@ package com.recrutech.recrutechplatform.service;
 import com.recrutech.common.exception.NotFoundException;
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
+import com.recrutech.recrutechplatform.dto.application.JobInfo;
+import com.recrutech.recrutechplatform.dto.application.UserInfo;
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
 import com.recrutech.recrutechplatform.model.Application;
 import com.recrutech.recrutechplatform.model.Job;
@@ -52,8 +54,7 @@ public class ApplicationServiceTest {
         job.setDescription("Job description");
         job.setLocation("Berlin");
 
-        applicationRequest = new ApplicationRequest();
-        applicationRequest.setCvFileId(cvFileId);
+        applicationRequest = new ApplicationRequest(cvFileId, "user-123", "John", "Doe");
     }
 
     @Test
@@ -75,12 +76,12 @@ public class ApplicationServiceTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals(savedApplication.getId(), response.getId());
-        assertEquals(jobId, response.getJobId());
-        assertEquals(cvFileId, response.getCvFileId());
-        assertEquals(ApplicationStatus.RECEIVED, response.getStatus());
-        assertFalse(response.isViewedByHr());
-        assertNotNull(response.getCreatedAt());
+        assertEquals(savedApplication.getId(), response.id());
+        assertEquals(jobId, response.job().id());
+        assertEquals(cvFileId, response.cvFileId());
+        assertEquals(ApplicationStatus.RECEIVED, response.status());
+        assertFalse(response.viewedByHr());
+        assertNotNull(response.createdAt());
 
         verify(jobRepository).findById(jobId);
         verify(applicationRepository).save(any(Application.class));
@@ -104,12 +105,12 @@ public class ApplicationServiceTest {
     @Test
     void createApplication_InvalidCvFileId() {
         // Arrange
-        applicationRequest.setCvFileId("invalid-uuid");
+        ApplicationRequest invalidRequest = new ApplicationRequest("invalid-uuid", "user-123", "John", "Doe");
         when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
 
         // Act & Assert
         Exception exception = assertThrows(Exception.class, () -> {
-            applicationService.createApplication(jobId, applicationRequest);
+            applicationService.createApplication(jobId, invalidRequest);
         });
 
         assertTrue(exception.getMessage().contains("CV File ID"));

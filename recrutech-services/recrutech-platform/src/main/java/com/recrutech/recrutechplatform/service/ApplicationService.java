@@ -4,6 +4,9 @@ import com.recrutech.common.exception.NotFoundException;
 import com.recrutech.common.util.UuidValidator;
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
+import com.recrutech.recrutechplatform.dto.application.ApplicationSummaryResponse;
+import com.recrutech.recrutechplatform.dto.application.JobInfo;
+import com.recrutech.recrutechplatform.dto.application.UserInfo;
 import com.recrutech.recrutechplatform.enums.ApplicationStatus;
 import com.recrutech.recrutechplatform.model.Application;
 import com.recrutech.recrutechplatform.model.Job;
@@ -32,12 +35,13 @@ public class ApplicationService {
                 .orElseThrow(() -> new NotFoundException("Job not found with id: " + jobId));
 
         // Validate cvFileId is a valid UUID
-        String cvFileId = request.getCvFileId();
+        String cvFileId = request.cvFileId();
         UuidValidator.validateUuid(cvFileId, "CV File ID");
 
         // Create new application
         Application application = new Application();
         application.setCvFileId(cvFileId);
+        application.setUserId(request.userId());
         application.setStatus(ApplicationStatus.RECEIVED);
         application.setViewedByHr(false);
         application.setJob(job);
@@ -46,27 +50,26 @@ public class ApplicationService {
         Application savedApplication = applicationRepository.save(application);
 
         // Return response
-        return ApplicationResponse.builder()
-                .id(savedApplication.getId())
-                .jobId(jobId)
-                .cvFileId(savedApplication.getCvFileId())
-                .status(savedApplication.getStatus())
-                .viewedByHr(savedApplication.isViewedByHr())
-                .createdAt(savedApplication.getCreatedAt())
-                .build();
+        return new ApplicationResponse(
+                savedApplication.getId(),
+                new JobInfo(jobId, job.getTitle(), job.getLocation()),
+                new UserInfo(request.userId(), request.firstName(), request.lastName()),
+                savedApplication.getCvFileId(),
+                savedApplication.getStatus(),
+                savedApplication.isViewedByHr(),
+                savedApplication.getCreatedAt()
+        );
     }
 
-    public List<ApplicationResponse> getAllApplications() {
+    public List<ApplicationSummaryResponse> getAllApplications() {
         List<Application> applications = applicationRepository.findAll();
         return applications.stream()
-                .map(app -> ApplicationResponse.builder()
-                        .id(app.getId())
-                        .jobId(app.getJob().getId())
-                        .cvFileId(app.getCvFileId())
-                        .status(app.getStatus())
-                        .viewedByHr(app.isViewedByHr())
-                        .createdAt(app.getCreatedAt())
-                        .build())
+                .map(app -> new ApplicationSummaryResponse(
+                        app.getId(),
+                        new JobInfo(app.getJob().getId(), app.getJob().getTitle(), app.getJob().getLocation()),
+                        new UserInfo(app.getUserId(), getUserFirstName(app.getUserId()), getUserLastName(app.getUserId())),
+                        app.getStatus().toString()
+                ))
                 .toList();
     }
 
@@ -78,13 +81,28 @@ public class ApplicationService {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new NotFoundException("Application not found with id: " + applicationId));
         // Return response
-        return ApplicationResponse.builder()
-                .id(application.getId())
-                .jobId(application.getJob().getId())
-                .cvFileId(application.getCvFileId())
-                .status(application.getStatus())
-                .viewedByHr(application.isViewedByHr())
-                .createdAt(application.getCreatedAt())
-                .build();
+        return new ApplicationResponse(
+                application.getId(),
+                new JobInfo(application.getJob().getId(), application.getJob().getTitle(), application.getJob().getLocation()),
+                new UserInfo(application.getUserId(), getUserFirstName(application.getUserId()), getUserLastName(application.getUserId())),
+                application.getCvFileId(),
+                application.getStatus(),
+                application.isViewedByHr(),
+                application.getCreatedAt()
+        );
+    }
+
+    // Helper methods to fetch user information
+    // TODO: Implement proper user service integration
+    private String getUserFirstName(String userId) {
+        if (userId == null) return "Unknown";
+        // Placeholder - in real implementation, call auth service to get user info
+        return "FirstName";
+    }
+
+    private String getUserLastName(String userId) {
+        if (userId == null) return "Unknown";
+        // Placeholder - in real implementation, call auth service to get user info
+        return "LastName";
     }
 }

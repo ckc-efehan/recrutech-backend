@@ -18,6 +18,7 @@
         <module>recrutech-common</module>
         <module>recrutech-platform</module>
         <module>recrutech-auth</module>
+        <module>recrutech-notification</module>
     </modules>
 
     <properties>

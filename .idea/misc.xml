@@ -11,6 +11,7 @@
         <option value="$PROJECT_DIR$/recrutech-services/pom.xml" />
         <option value="$PROJECT_DIR$/recrutech-services/recrutech-auth/pom.xml" />
         <option value="$PROJECT_DIR$/pom.xml" />
+        <option value="$PROJECT_DIR$/recrutech-services/recrutech-notification/pom.xml" />
       </list>
     </option>
   </component>

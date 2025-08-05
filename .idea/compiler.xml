@@ -18,6 +18,7 @@
         </processorPath>
         <module name="recrutech-platform" />
         <module name="recrutech-common" />
+        <module name="recrutech-notification" />
         <module name="recrutech-auth" />
       </profile>
     </annotationProcessing>
@@ -29,6 +30,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="recrutech-auth" options="-parameters" />
       <module name="recrutech-common" options="-parameters" />
+      <module name="recrutech-notification" options="-parameters" />
       <module name="recrutech-platform" options="-parameters" />
     </option>
   </component>

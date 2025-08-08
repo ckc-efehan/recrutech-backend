@@ -51,12 +51,12 @@ public class ApplicationController {
     @GetMapping("/jobs/{jobId}/applications")
     @ResponseStatus(HttpStatus.OK)
     public List<ApplicationSummaryResponse> getAllApplications(@PathVariable String jobId) {
-        return applicationService.getAllApplications();
+        return applicationService.getAllApplications(jobId);
     }
 
     @GetMapping("/jobs/{jobId}/applications/{applicationId}")
     @ResponseStatus(HttpStatus.OK)
     public ApplicationResponse getApplicationById(@PathVariable String applicationId, @PathVariable String jobId) {
-        return applicationService.getApplicationById(applicationId);
+        return applicationService.getApplicationById(applicationId, jobId);
     }
 }

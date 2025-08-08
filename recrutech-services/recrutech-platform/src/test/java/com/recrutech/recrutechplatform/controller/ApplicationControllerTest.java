@@ -1,7 +1,6 @@
 package com.recrutech.recrutechplatform.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.recrutech.recrutechplatform.controller.ApplicationController;
 import com.recrutech.common.dto.UserInfo;
 import com.recrutech.recrutechplatform.dto.application.ApplicationRequest;
 import com.recrutech.recrutechplatform.dto.application.ApplicationResponse;
@@ -14,12 +13,10 @@ import com.recrutech.recrutechplatform.service.ApplicationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
@@ -141,10 +138,10 @@ class ApplicationControllerTest {
         ApplicationSummaryResponse applicationSummaryResponse1 = new ApplicationSummaryResponse(
                 "app-id-123", new JobInfo("job-id-456", "Software Engineer", "Berlin"), new UserInfo("user-id-1", "John", "Doe"), "RECEIVED");
         ApplicationSummaryResponse applicationSummaryResponse2 = new ApplicationSummaryResponse(
-                "app-id-789", new JobInfo("job-id-101", "Data Analyst", "Munich"), new UserInfo("user-id-2", "Jane", "Smith"), "UNDER_REVIEW");
+                "app-id-789", new JobInfo("job-id-456", "Software Engineer", "Berlin"), new UserInfo("user-id-2", "Jane", "Smith"), "UNDER_REVIEW");
 
         List<ApplicationSummaryResponse> applicationResponses = List.of(applicationSummaryResponse1, applicationSummaryResponse2);
-        when(applicationService.getAllApplications()).thenReturn(applicationResponses);
+        when(applicationService.getAllApplications(jobId)).thenReturn(applicationResponses);
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/jobs/{jobId}/applications", jobId)
@@ -157,19 +154,19 @@ class ApplicationControllerTest {
                 .andExpect(jsonPath("$[0].job.location", is("Berlin")))
                 .andExpect(jsonPath("$[0].status", is("RECEIVED")))
                 .andExpect(jsonPath("$[1].id", is("app-id-789")))
-                .andExpect(jsonPath("$[1].job.id", is("job-id-101")))
-                .andExpect(jsonPath("$[1].job.title", is("Data Analyst")))
-                .andExpect(jsonPath("$[1].job.location", is("Munich")))
+                .andExpect(jsonPath("$[1].job.id", is("job-id-456")))
+                .andExpect(jsonPath("$[1].job.title", is("Software Engineer")))
+                .andExpect(jsonPath("$[1].job.location", is("Berlin")))
                 .andExpect(jsonPath("$[1].status", is("UNDER_REVIEW")));
 
-        verify(applicationService, times(1)).getAllApplications();
+        verify(applicationService, times(1)).getAllApplications(jobId);
     }
 
     @Test
     void getAllApplications_WhenNoApplications_ShouldReturnEmptyList() throws Exception {
         // Arrange
         String jobId = "job-id-456";
-        when(applicationService.getAllApplications()).thenReturn(List.<ApplicationSummaryResponse>of());
+        when(applicationService.getAllApplications(jobId)).thenReturn(List.<ApplicationSummaryResponse>of());
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/jobs/{jobId}/applications", jobId)
@@ -177,7 +174,7 @@ class ApplicationControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
 
-        verify(applicationService, times(1)).getAllApplications();
+        verify(applicationService, times(1)).getAllApplications(jobId);
     }
 
     @Test
@@ -185,7 +182,7 @@ class ApplicationControllerTest {
         // Arrange
         String jobId = "job-id-456";
         String applicationId = "app-id-123";
-        when(applicationService.getApplicationById(applicationId)).thenReturn(applicationResponse);
+        when(applicationService.getApplicationById(applicationId, jobId)).thenReturn(applicationResponse);
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/jobs/{jobId}/applications/{applicationId}", jobId, applicationId)
@@ -199,7 +196,7 @@ class ApplicationControllerTest {
                 .andExpect(jsonPath("$.status", is("RECEIVED")))
                 .andExpect(jsonPath("$.viewedByHr", is(false)));
 
-        verify(applicationService, times(1)).getApplicationById(applicationId);
+        verify(applicationService, times(1)).getApplicationById(applicationId, jobId);
     }
 
     @Test
@@ -207,16 +204,16 @@ class ApplicationControllerTest {
         // Arrange
         String jobId = "job-id-456";
         String applicationId = "non-existent-app-id";
-        when(applicationService.getApplicationById(applicationId))
-                .thenThrow(new NotFoundException("Application not found with id: " + applicationId));
+        when(applicationService.getApplicationById(applicationId, jobId))
+                .thenThrow(new NotFoundException("Application not found with id: " + applicationId + " for job: " + jobId));
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/jobs/{jobId}/applications/{applicationId}", jobId, applicationId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message", is("Application not found with id: " + applicationId)));
+                .andExpect(jsonPath("$.message", is("Application not found with id: " + applicationId + " for job: " + jobId)));
 
-        verify(applicationService, times(1)).getApplicationById(applicationId);
+        verify(applicationService, times(1)).getApplicationById(applicationId, jobId);
     }
 
     @Test
@@ -260,18 +257,18 @@ class ApplicationControllerTest {
     @Test
     void getAllApplications_WithDifferentStatuses_ShouldReturnAllStatuses() throws Exception {
         // Arrange
+        String jobId = "job-id-456";
         ApplicationSummaryResponse receivedApp = new ApplicationSummaryResponse(
-                "app-id-1", new JobInfo("job-id-1", "Frontend Developer", "Hamburg"), new UserInfo("user-id-1", "Alice", "Johnson"), "RECEIVED");
+                "app-id-1", new JobInfo("job-id-456", "Frontend Developer", "Hamburg"), new UserInfo("user-id-1", "Alice", "Johnson"), "RECEIVED");
         ApplicationSummaryResponse invitedApp = new ApplicationSummaryResponse(
-                "app-id-2", new JobInfo("job-id-2", "Backend Developer", "Frankfurt"), new UserInfo("user-id-2", "Bob", "Wilson"), "INVITED");
+                "app-id-2", new JobInfo("job-id-456", "Backend Developer", "Frankfurt"), new UserInfo("user-id-2", "Bob", "Wilson"), "INVITED");
         ApplicationSummaryResponse rejectedApp = new ApplicationSummaryResponse(
-                "app-id-3", new JobInfo("job-id-3", "DevOps Engineer", "Cologne"), new UserInfo("user-id-3", "Charlie", "Brown"), "REJECTED");
+                "app-id-3", new JobInfo("job-id-456", "DevOps Engineer", "Cologne"), new UserInfo("user-id-3", "Charlie", "Brown"), "REJECTED");
 
         List<ApplicationSummaryResponse> applicationResponses = List.of(receivedApp, invitedApp, rejectedApp);
-        when(applicationService.getAllApplications()).thenReturn(applicationResponses);
+        when(applicationService.getAllApplications(jobId)).thenReturn(applicationResponses);
 
         // Act & Assert
-        String jobId = "job-id-456";
         mockMvc.perform(get("/api/v1/jobs/{jobId}/applications", jobId)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -280,6 +277,6 @@ class ApplicationControllerTest {
                 .andExpect(jsonPath("$[1].status", is("INVITED")))
                 .andExpect(jsonPath("$[2].status", is("REJECTED")));
 
-        verify(applicationService, times(1)).getAllApplications();
+        verify(applicationService, times(1)).getAllApplications(jobId);
     }
 }

@@ -200,12 +200,13 @@ public class ApplicationServiceTest {
         UserInfo userInfo1 = new UserInfo("user1", "John", "Doe");
         UserInfo userInfo2 = new UserInfo("user2", "Jane", "Smith");
 
-        when(applicationRepository.findAll()).thenReturn(applications);
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        when(applicationRepository.findByJob_Id(jobId)).thenReturn(applications);
         when(userInfoService.createUserInfo("user1")).thenReturn(userInfo1);
         when(userInfoService.createUserInfo("user2")).thenReturn(userInfo2);
 
         // Act
-        List<ApplicationSummaryResponse> result = applicationService.getAllApplications();
+        List<ApplicationSummaryResponse> result = applicationService.getAllApplications(jobId);
 
         // Assert
         assertNotNull(result);
@@ -223,7 +224,8 @@ public class ApplicationServiceTest {
         assertEquals("Jane", summary2.user().firstName());
         assertEquals("Smith", summary2.user().lastName());
 
-        verify(applicationRepository).findAll();
+        verify(jobRepository).findById(jobId);
+        verify(applicationRepository).findByJob_Id(jobId);
         verify(userInfoService).createUserInfo("user1");
         verify(userInfoService).createUserInfo("user2");
     }
@@ -231,15 +233,17 @@ public class ApplicationServiceTest {
     @Test
     void getAllApplications_EmptyList() {
         // Arrange
-        when(applicationRepository.findAll()).thenReturn(Collections.emptyList());
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        when(applicationRepository.findByJob_Id(jobId)).thenReturn(Collections.emptyList());
 
         // Act
-        List<ApplicationSummaryResponse> result = applicationService.getAllApplications();
+        List<ApplicationSummaryResponse> result = applicationService.getAllApplications(jobId);
 
         // Assert
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(applicationRepository).findAll();
+        verify(jobRepository).findById(jobId);
+        verify(applicationRepository).findByJob_Id(jobId);
         verify(userInfoService, never()).createUserInfo(anyString());
     }
 
@@ -250,11 +254,12 @@ public class ApplicationServiceTest {
         Application application = createTestApplication(applicationId, userId);
         UserInfo userInfo = new UserInfo(userId, "John", "Doe");
 
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.of(application));
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        when(applicationRepository.findByIdAndJob_Id(applicationId, jobId)).thenReturn(Optional.of(application));
         when(userInfoService.createUserInfo(userId)).thenReturn(userInfo);
 
         // Act
-        ApplicationResponse result = applicationService.getApplicationById(applicationId);
+        ApplicationResponse result = applicationService.getApplicationById(applicationId, jobId);
 
         // Assert
         assertNotNull(result);
@@ -269,7 +274,8 @@ public class ApplicationServiceTest {
         assertFalse(result.viewedByHr());
         assertNotNull(result.createdAt());
 
-        verify(applicationRepository).findById(applicationId);
+        verify(jobRepository).findById(jobId);
+        verify(applicationRepository).findByIdAndJob_Id(applicationId, jobId);
         verify(userInfoService).createUserInfo(userId);
     }
 
@@ -277,15 +283,17 @@ public class ApplicationServiceTest {
     void getApplicationById_NotFound() {
         // Arrange
         String applicationId = UUID.randomUUID().toString();
-        when(applicationRepository.findById(applicationId)).thenReturn(Optional.empty());
+        when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+        when(applicationRepository.findByIdAndJob_Id(applicationId, jobId)).thenReturn(Optional.empty());
 
         // Act & Assert
         NotFoundException exception = assertThrows(NotFoundException.class, () -> {
-            applicationService.getApplicationById(applicationId);
+            applicationService.getApplicationById(applicationId, jobId);
         });
 
-        assertEquals("Application not found with id: " + applicationId, exception.getMessage());
-        verify(applicationRepository).findById(applicationId);
+        assertEquals("Application not found with id: " + applicationId + " for job: " + jobId, exception.getMessage());
+        verify(jobRepository).findById(jobId);
+        verify(applicationRepository).findByIdAndJob_Id(applicationId, jobId);
         verify(userInfoService, never()).createUserInfo(anyString());
     }
 
@@ -296,11 +304,12 @@ public class ApplicationServiceTest {
 
         // Act & Assert
         ValidationException exception = assertThrows(ValidationException.class, () -> {
-            applicationService.getApplicationById(invalidId);
+            applicationService.getApplicationById(invalidId, jobId);
         });
 
         assertTrue(exception.getMessage().contains("Application ID"));
-        verify(applicationRepository, never()).findById(anyString());
+        verify(jobRepository, never()).findById(anyString());
+        verify(applicationRepository, never()).findByIdAndJob_Id(anyString(), anyString());
         verify(userInfoService, never()).createUserInfo(anyString());
     }
 
@@ -308,11 +317,12 @@ public class ApplicationServiceTest {
     void getApplicationById_NullId() {
         // Act & Assert
         ValidationException exception = assertThrows(ValidationException.class, () -> {
-            applicationService.getApplicationById(null);
+            applicationService.getApplicationById(null, jobId);
         });
 
         assertTrue(exception.getMessage().contains("Application ID"));
-        verify(applicationRepository, never()).findById(anyString());
+        verify(jobRepository, never()).findById(anyString());
+        verify(applicationRepository, never()).findByIdAndJob_Id(anyString(), anyString());
         verify(userInfoService, never()).createUserInfo(anyString());
     }
 

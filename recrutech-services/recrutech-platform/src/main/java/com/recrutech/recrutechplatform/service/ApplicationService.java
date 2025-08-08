@@ -102,18 +102,27 @@ public class ApplicationService {
     }
 
     /**
-     * Retrieves all applications with summary information.
+     * Retrieves all applications for a specific job with summary information.
      * This method fetches applications with their associated job information
      * and user details from the user service.
      *
-     * @return a list of all applications with summary information
+     * @param jobId the ID of the job to filter applications by
+     * @return a list of applications for the specified job with summary information
+     * @throws ValidationException if the job ID is invalid
+     * @throws NotFoundException if the job is not found
      */
     @Transactional(readOnly = true)
-    public List<ApplicationSummaryResponse> getAllApplications() {
-        log.debug("Retrieving all applications");
+    public List<ApplicationSummaryResponse> getAllApplications(String jobId) {
+        log.debug("Retrieving all applications for job: {}", jobId);
         
-        List<Application> applications = applicationRepository.findAll();
-        log.info("Retrieved {} applications", applications.size());
+        // Validate job ID
+        UuidValidator.validateUuid(jobId, "Job ID");
+        
+        // Verify job exists
+        findJobByIdOrThrow(jobId, "retrieving applications");
+        
+        List<Application> applications = applicationRepository.findByJob_Id(jobId);
+        log.info("Retrieved {} applications for job: {}", applications.size(), jobId);
         
         return applications.stream()
                 .map(this::mapToApplicationSummaryResponse)
@@ -121,28 +130,34 @@ public class ApplicationService {
     }
 
     /**
-     * Retrieves an application by its ID with full details.
+     * Retrieves an application by its ID and job ID with full details.
+     * This ensures the application belongs to the specified job.
      *
      * @param applicationId the ID of the application to retrieve
+     * @param jobId the ID of the job the application should belong to
      * @return the application response with full details
-     * @throws ValidationException if the application ID is invalid
-     * @throws NotFoundException if the application is not found
+     * @throws ValidationException if the application ID or job ID is invalid
+     * @throws NotFoundException if the application is not found or doesn't belong to the specified job
      */
     @Transactional(readOnly = true)
-    public ApplicationResponse getApplicationById(String applicationId) {
-        log.debug("Retrieving application with id: {}", applicationId);
+    public ApplicationResponse getApplicationById(String applicationId, String jobId) {
+        log.debug("Retrieving application with id: {} for job: {}", applicationId, jobId);
         
-        // Validate application ID
+        // Validate application ID and job ID
         UuidValidator.validateUuid(applicationId, "Application ID");
+        UuidValidator.validateUuid(jobId, "Job ID");
+        
+        // Verify job exists
+        findJobByIdOrThrow(jobId, "retrieving application");
 
-        // Find application by ID
-        Application application = applicationRepository.findById(applicationId)
+        // Find application by ID and job ID
+        Application application = applicationRepository.findByIdAndJob_Id(applicationId, jobId)
                 .orElseThrow(() -> {
-                    log.warn("Application with id {} not found", applicationId);
-                    return new NotFoundException("Application not found with id: " + applicationId);
+                    log.warn("Application with id {} not found for job {}", applicationId, jobId);
+                    return new NotFoundException("Application not found with id: " + applicationId + " for job: " + jobId);
                 });
         
-        log.info("Retrieved application with id: {}", applicationId);
+        log.info("Retrieved application with id: {} for job: {}", applicationId, jobId);
         return mapToApplicationResponse(application);
     }
 

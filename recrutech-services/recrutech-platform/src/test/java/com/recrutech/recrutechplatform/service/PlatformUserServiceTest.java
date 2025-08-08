@@ -221,4 +221,144 @@ class PlatformUserServiceTest {
         assertFalse(exists); // Should return false for security in case of error
     }
 
+    @Test
+    void testGetUserInfo_EmptyUserId() {
+        // When
+        AuthUserResponse result = platformUserService.getUserInfo("   ");
+
+        // Then
+        assertNotNull(result);
+        assertEquals("Unknown", result.firstName());
+        assertEquals("User", result.lastName());
+        assertFalse(result.active());
+        verifyNoInteractions(authServiceRestTemplate);
+    }
+
+    @Test
+    void testGetUserInfo_RestClientException() {
+        // Given
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenThrow(new RestClientException("Connection failed"));
+
+        // When & Then
+        assertThrows(RestClientException.class, () -> {
+            platformUserService.getUserInfo(TEST_USER_ID);
+        });
+    }
+
+    @Test
+    void testGetUserInfo_NonOkResponse() {
+        // Given
+        ResponseEntity<AuthUserResponse> responseEntity = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenReturn(responseEntity);
+
+        // When
+        AuthUserResponse result = platformUserService.getUserInfo(TEST_USER_ID);
+
+        // Then
+        assertNotNull(result);
+        assertEquals("Unknown", result.firstName());
+        assertEquals("User", result.lastName());
+        assertFalse(result.active());
+    }
+
+    @Test
+    void testGetUserLastName_EmptyUserId() {
+        // When
+        String lastName = platformUserService.getUserLastName("   ");
+
+        // Then
+        assertEquals("Unknown", lastName);
+        verifyNoInteractions(authServiceRestTemplate);
+    }
+
+    @Test
+    void testGetUserLastName_NullUserId() {
+        // When
+        String lastName = platformUserService.getUserLastName(null);
+
+        // Then
+        assertEquals("Unknown", lastName);
+        verifyNoInteractions(authServiceRestTemplate);
+    }
+
+    @Test
+    void testGetUserLastName_RestClientException() {
+        // Given
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenThrow(new RestClientException("Connection failed"));
+
+        // When
+        String lastName = platformUserService.getUserLastName(TEST_USER_ID);
+
+        // Then
+        assertEquals("Unknown", lastName);
+    }
+
+    @Test
+    void testGetUserLastName_NonOkResponse() {
+        // Given
+        ResponseEntity<AuthUserResponse> responseEntity = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenReturn(responseEntity);
+
+        // When
+        String lastName = platformUserService.getUserLastName(TEST_USER_ID);
+
+        // Then
+        assertEquals("User", lastName);
+    }
+
+    @Test
+    void testGetUserFirstName_NullFirstName() {
+        // Given
+        AuthUserResponse mockResponse = new AuthUserResponse(
+                TEST_USER_ID, null, TEST_LAST_NAME, "john.doe@example.com", true);
+        ResponseEntity<AuthUserResponse> responseEntity = new ResponseEntity<>(mockResponse, HttpStatus.OK);
+
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenReturn(responseEntity);
+
+        // When
+        String firstName = platformUserService.getUserFirstName(TEST_USER_ID);
+
+        // Then
+        assertEquals("Unknown", firstName);
+    }
+
+    @Test
+    void testGetUserLastName_NullLastName() {
+        // Given
+        AuthUserResponse mockResponse = new AuthUserResponse(
+                TEST_USER_ID, TEST_FIRST_NAME, null, "john.doe@example.com", true);
+        ResponseEntity<AuthUserResponse> responseEntity = new ResponseEntity<>(mockResponse, HttpStatus.OK);
+
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenReturn(responseEntity);
+
+        // When
+        String lastName = platformUserService.getUserLastName(TEST_USER_ID);
+
+        // Then
+        assertEquals("Unknown", lastName);
+    }
+
+    @Test
+    void testUserExists_NullUserInfo() {
+        // Given
+        ResponseEntity<AuthUserResponse> responseEntity = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+
+        when(authServiceRestTemplate.getForEntity(anyString(), eq(AuthUserResponse.class), eq(TEST_USER_ID)))
+                .thenReturn(responseEntity);
+
+        // When
+        boolean exists = platformUserService.userExists(TEST_USER_ID);
+
+        // Then
+        assertFalse(exists);
+    }
+
 }

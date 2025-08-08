@@ -1,0 +1,8 @@
+com\recrutech\common\validator\JobValidatorTest.class
+com\recrutech\common\util\StringValidatorTest.class
+com\recrutech\common\entity\BaseEntityTest$TestEntity.class
+com\recrutech\common\entity\BaseEntityTest.class
+com\recrutech\common\util\UuidGeneratorTest.class
+com\recrutech\common\util\EntityValidatorTest.class
+com\recrutech\common\util\EntityLifecycleUtilTest.class
+com\recrutech\common\util\UuidValidatorTest.class

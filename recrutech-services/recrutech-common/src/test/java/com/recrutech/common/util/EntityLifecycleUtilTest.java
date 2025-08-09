@@ -22,7 +22,7 @@ class EntityLifecycleUtilTest {
     
     @Test
     void createTimestamp_ShouldReturnCurrentTime() {
-        // Arrange
+        // Arranges
         LocalDateTime before = LocalDateTime.now().minusSeconds(1);
         
         // Act

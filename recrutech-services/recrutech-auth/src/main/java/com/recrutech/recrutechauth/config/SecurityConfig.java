@@ -45,7 +45,7 @@ import java.util.List;
  * This class configures Spring Security with JWT authentication.
  * Uses an asymmetric key (RSA) approach for enhanced security.
  */
-@Configuration
+@Configuration("authSecurityConfig")
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -86,6 +86,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/test/public").permitAll()
                         .requestMatchers("/api/oauth2/jwks", "/api/.well-known/openid_configuration").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
+                        .requestMatchers("/api/users/**").permitAll() // Allow internal service-to-service communication
                         .anyRequest().authenticated()
                 )
                 // Configure session management

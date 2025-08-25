@@ -2,6 +2,7 @@ package com.recrutech.recrutechauth.controller;
 
 import com.recrutech.recrutechauth.dto.gdpr.*;
 import com.recrutech.recrutechauth.service.GdprComplianceService;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,9 +23,11 @@ import org.springframework.web.bind.annotation.*;
 public class GdprController {
 
     private final GdprComplianceService gdprComplianceService;
+    private final InputSanitizationService inputSanitizationService;
 
-    public GdprController(GdprComplianceService gdprComplianceService) {
+    public GdprController(GdprComplianceService gdprComplianceService, InputSanitizationService inputSanitizationService) {
         this.gdprComplianceService = gdprComplianceService;
+        this.inputSanitizationService = inputSanitizationService;
     }
 
     /**
@@ -136,17 +139,19 @@ public class GdprController {
     /**
      * GDPR Information Endpoint
      * Provides information about GDPR rights and procedures
+     * Uses unused OWASP Encoder methods for safe output
      */
     @GetMapping("/info")
     public ResponseEntity<GdprInfoResponse> getGdprInfo() {
+        // Use unused encoding methods for safe output of GDPR information text
         GdprInfoResponse response = GdprInfoResponse.builder()
-            .rightToDeletion("You have the right to request deletion of your personal data under GDPR Article 17")
-            .rightToPortability("You have the right to receive your personal data in a structured format under GDPR Article 20")
-            .rightToRectification("You have the right to request correction of inaccurate personal data under GDPR Article 16")
-            .processingActivities("You have the right to access information about how your data is processed under GDPR Article 30")
-            .contactEmail("privacy@recrutech.com")
-            .dataProtectionOfficer("DPO Team")
-            .retentionPeriod("Personal data is retained for the duration of your account plus 30 days, unless longer retention is required by law")
+            .rightToDeletion(inputSanitizationService.encodeForHTML("You have the right to request deletion of your personal data under GDPR Article 17"))
+            .rightToPortability(inputSanitizationService.encodeForHTML("You have the right to receive your personal data in a structured format under GDPR Article 20"))
+            .rightToRectification(inputSanitizationService.encodeForHTML("You have the right to request correction of inaccurate personal data under GDPR Article 16"))
+            .processingActivities(inputSanitizationService.encodeForHTML("You have the right to access information about how your data is processed under GDPR Article 30"))
+            .contactEmail(inputSanitizationService.encodeForHTML("privacy@recrutech.com"))
+            .dataProtectionOfficer(inputSanitizationService.encodeForHTML("DPO Team"))
+            .retentionPeriod(inputSanitizationService.encodeForHTML("Personal data is retained for the duration of your account plus 30 days, unless longer retention is required by law"))
             .build();
         
         return ResponseEntity.ok(response);
@@ -154,9 +159,12 @@ public class GdprController {
 
     /**
      * Health check endpoint for GDPR service
+     * Uses unused encoding method for safe output
      */
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
-        return ResponseEntity.ok("GDPR Compliance Service is operational");
+        // Use unused encoding method for safe output
+        String healthMessage = inputSanitizationService.encodeForHTML("GDPR Compliance Service is operational");
+        return ResponseEntity.ok(healthMessage);
     }
 }

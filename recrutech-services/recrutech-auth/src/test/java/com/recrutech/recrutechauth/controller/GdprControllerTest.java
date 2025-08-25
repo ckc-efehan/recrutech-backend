@@ -1,6 +1,7 @@
 package com.recrutech.recrutechauth.controller;
 
 import com.recrutech.recrutechauth.service.GdprComplianceService;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.dto.gdpr.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -34,11 +34,14 @@ class GdprControllerTest {
     @Mock
     private HttpServletRequest httpServletRequest;
     
+    @Mock
+    private InputSanitizationService inputSanitizationService;
+    
     private GdprController gdprController;
 
     @BeforeEach
     void setUp() {
-        gdprController = new GdprController(gdprComplianceService);
+        gdprController = new GdprController(gdprComplianceService, inputSanitizationService);
         
         System.out.println("[DEBUG_LOG] GdprController test setup completed");
     }
@@ -289,6 +292,9 @@ class GdprControllerTest {
     @Test
     @DisplayName("Test GDPR info endpoint")
     void testGdprInfoEndpoint() {
+        // Mock InputSanitizationService for this test
+        when(inputSanitizationService.encodeForHTML(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         // Act
         ResponseEntity<GdprInfoResponse> response = gdprController.getGdprInfo();
 
@@ -310,6 +316,9 @@ class GdprControllerTest {
     @Test
     @DisplayName("Test GDPR health check endpoint")
     void testGdprHealthCheckEndpoint() {
+        // Mock InputSanitizationService for this test
+        when(inputSanitizationService.encodeForHTML(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         // Act
         ResponseEntity<String> response = gdprController.healthCheck();
 

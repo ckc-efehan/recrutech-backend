@@ -4,6 +4,7 @@ import com.recrutech.recrutechauth.dto.registration.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,7 @@ class AuthServiceFieldAccessTest {
     @Mock private PasswordValidator passwordValidator;
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
+    @Mock private InputSanitizationService inputSanitizationService;
 
     private AuthService authService;
 
@@ -52,7 +54,8 @@ class AuthServiceFieldAccessTest {
             passwordEncoder,
             passwordValidator,
             tokenProvider,
-            securityService
+            securityService,
+            inputSanitizationService
         );
     }
 

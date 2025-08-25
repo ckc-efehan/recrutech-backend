@@ -5,6 +5,7 @@ import com.recrutech.recrutechauth.model.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
 import com.recrutech.recrutechauth.exception.ConflictException;
 import com.recrutech.common.exception.ValidationException;
@@ -44,6 +45,7 @@ class AuthServiceHelperMethodsTest {
     @Mock private PasswordValidator passwordValidator;
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
+    @Mock private InputSanitizationService inputSanitizationService;
 
     private AuthService authService;
 
@@ -57,7 +59,8 @@ class AuthServiceHelperMethodsTest {
             passwordEncoder,
             passwordValidator,
             tokenProvider,
-            securityService
+            securityService,
+            inputSanitizationService
         );
     }
 
@@ -77,6 +80,9 @@ class AuthServiceHelperMethodsTest {
             .privacyConsent(true)
             .build();
 
+        // Mock InputSanitizationService to return sanitized input
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         when(userRepository.existsByEmail("existing@test.com")).thenReturn(true);
 
         // When/Then: Should throw ConflictException from createUser method
@@ -103,6 +109,9 @@ class AuthServiceHelperMethodsTest {
             .privacyConsent(true)
             .build();
 
+        // Mock InputSanitizationService to return sanitized input
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
         when(passwordValidator.validate("weak")).thenReturn(List.of("Password too short", "Missing special characters"));
 
@@ -132,6 +141,9 @@ class AuthServiceHelperMethodsTest {
             .privacyConsent(true)
             .build();
 
+        // Mock InputSanitizationService to return sanitized input
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
         when(passwordValidator.validate("validPassword123!")).thenReturn(List.of()); // No validation errors
         when(passwordEncoder.encode("validPassword123!")).thenReturn("encoded_password");
@@ -202,6 +214,10 @@ class AuthServiceHelperMethodsTest {
 
         Company company = new Company();
         company.setId("existing-company");
+        
+        // Mock InputSanitizationService to return sanitized input
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        
         when(companyRepository.findById("existing-company")).thenReturn(Optional.of(company));
         when(userRepository.existsByEmail("hr@test.com")).thenReturn(false);
         when(passwordValidator.validate("password123")).thenReturn(List.of());

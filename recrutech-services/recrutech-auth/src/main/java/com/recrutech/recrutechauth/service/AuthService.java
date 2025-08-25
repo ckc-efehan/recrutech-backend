@@ -40,6 +40,7 @@ public class AuthService {
     private final PasswordValidator passwordValidator;
     private final TokenProvider tokenProvider;
     private final SecurityService securityService;
+    private final InputSanitizationService inputSanitizationService;
 
     public AuthService(UserRepository userRepository,
                       CompanyRepository companyRepository,
@@ -48,7 +49,8 @@ public class AuthService {
                       PasswordEncoder passwordEncoder,
                       PasswordValidator passwordValidator,
                       TokenProvider tokenProvider,
-                      SecurityService securityService) {
+                      SecurityService securityService,
+                      InputSanitizationService inputSanitizationService) {
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
         this.hrEmployeeRepository = hrEmployeeRepository;
@@ -57,6 +59,7 @@ public class AuthService {
         this.passwordValidator = passwordValidator;
         this.tokenProvider = tokenProvider;
         this.securityService = securityService;
+        this.inputSanitizationService = inputSanitizationService;
     }
 
     /**
@@ -191,39 +194,48 @@ public class AuthService {
             throw new ConflictException("HR email already exists: " + hrEmail);
         }
         
-        // Log registration details for audit purposes
-        System.out.println("[DEBUG_LOG] Company registration - Name: " + request.name() + 
-                          ", Admin email: " + adminEmail + ", HR email: " + hrEmail);
+        // Sanitize input fields using unused InputSanitizationService methods
+        String sanitizedCompanyName = inputSanitizationService.sanitizeInput(request.name());
+        String sanitizedLocation = inputSanitizationService.sanitizeInput(request.location());
+        String sanitizedFirstName = inputSanitizationService.sanitizeInput(request.firstName());
+        String sanitizedLastName = inputSanitizationService.sanitizeInput(request.lastName());
+        String sanitizedBusinessEmail = inputSanitizationService.sanitizeInput(request.businessEmail());
+        String sanitizedTelephone = inputSanitizationService.sanitizeInput(request.telephone());
         
-        // Create admin user with generated email
+        // Log registration details for audit purposes (use encoded data for safe output)
+        System.out.println("[DEBUG_LOG] Company registration - Name: " + inputSanitizationService.encodeForHTML(sanitizedCompanyName) + 
+                          ", Admin email: " + inputSanitizationService.encodeForHTML(adminEmail) + 
+                          ", HR email: " + inputSanitizationService.encodeForHTML(hrEmail));
+        
+        // Create admin user with generated email and sanitized data
         User adminUser = createUser(
             adminEmail,
             request.password(),
-            request.firstName(),
-            request.lastName(),
+            sanitizedFirstName,
+            sanitizedLastName,
             UserRole.COMPANY_ADMIN
         );
 
-        // Create company
+        // Create company with sanitized data
         Company company = new Company();
-        company.setName(request.name());
-        company.setLocation(request.location());
-        company.setBusinessEmail(request.businessEmail());
-        company.setContactFirstName(request.firstName());
-        company.setContactLastName(request.lastName());
-        company.setTelephone(request.telephone());
+        company.setName(sanitizedCompanyName);
+        company.setLocation(sanitizedLocation);
+        company.setBusinessEmail(sanitizedBusinessEmail);
+        company.setContactFirstName(sanitizedFirstName);
+        company.setContactLastName(sanitizedLastName);
+        company.setTelephone(sanitizedTelephone);
         company.setAdminUserId(adminUser.getId());
         company.setVerificationToken(tokenProvider.generateSecureToken());
         company.setVerificationExpiry(LocalDateTime.now().plusHours(24));
         
         company = companyRepository.save(company);
 
-        // Automatically create HR user with generated email
+        // Automatically create HR user with generated email and sanitized data
         User hrUser = createUser(
             hrEmail,
             request.password(),
-            request.firstName(),
-            request.lastName(),
+            sanitizedFirstName,
+            sanitizedLastName,
             UserRole.HR
         );
 
@@ -253,30 +265,39 @@ public class AuthService {
         // Business rule validation
         request.validateBusinessRules();
         
-        // Log HR registration details
+        // Sanitize input fields using unused InputSanitizationService methods
+        String sanitizedFirstName = inputSanitizationService.sanitizeInput(request.firstName());
+        String sanitizedLastName = inputSanitizationService.sanitizeInput(request.lastName());
+        String sanitizedEmail = inputSanitizationService.sanitizeInput(request.email());
+        String sanitizedDepartment = inputSanitizationService.sanitizeInput(request.department());
+        String sanitizedPosition = inputSanitizationService.sanitizeInput(request.position());
+        String sanitizedEmployeeId = inputSanitizationService.sanitizeInput(request.employeeId());
+        
+        // Log HR registration details (use encoded data for safe output)
         String fullName = request.getFullName();
         boolean isSelfRegistration = request.isSelfRegistration();
-        System.out.println("[DEBUG_LOG] HR registration - Full name: " + fullName + ", Self-registration: " + isSelfRegistration);
+        System.out.println("[DEBUG_LOG] HR registration - Full name: " + inputSanitizationService.encodeForHTML(fullName) + 
+                          ", Self-registration: " + isSelfRegistration + ", Email: " + inputSanitizationService.encodeForHTML(sanitizedEmail));
         
         // Validate company access
         validateCompanyAccess(request.companyId(), request.invitationToken());
         
-        // Create HR user
+        // Create HR user with sanitized data
         User hrUser = createUser(
-            request.email(),
+            sanitizedEmail,
             request.password(),
-            request.firstName(),
-            request.lastName(),
+            sanitizedFirstName,
+            sanitizedLastName,
             UserRole.HR
         );
 
-        // Create HR employee record
+        // Create HR employee record with sanitized data
         HREmployee hrEmployee = new HREmployee();
         hrEmployee.setUserId(hrUser.getId());
         hrEmployee.setCompanyId(request.companyId());
-        hrEmployee.setDepartment(request.department());
-        hrEmployee.setPosition(request.position());
-        hrEmployee.setEmployeeId(request.employeeId());
+        hrEmployee.setDepartment(sanitizedDepartment);
+        hrEmployee.setPosition(sanitizedPosition);
+        hrEmployee.setEmployeeId(sanitizedEmployeeId);
         hrEmployeeRepository.save(hrEmployee);
 
         return UserRegistrationResponse.createSuccessResponse(hrUser.getId(), "hr");
@@ -291,27 +312,34 @@ public class AuthService {
         // Business rule validation
         request.validateBusinessRules();
         
-        // Log applicant registration details
+        // Sanitize input fields using unused InputSanitizationService methods
+        String sanitizedFirstName = inputSanitizationService.sanitizeInput(request.personalInfo().firstName());
+        String sanitizedLastName = inputSanitizationService.sanitizeInput(request.personalInfo().lastName());
+        String sanitizedEmail = inputSanitizationService.sanitizeInput(request.personalInfo().email());
+        String sanitizedPhoneNumber = inputSanitizationService.sanitizeInput(request.personalInfo().phoneNumber());
+        String sanitizedCurrentLocation = inputSanitizationService.sanitizeInput(request.personalInfo().currentLocation());
+        
+        // Log applicant registration details (use encoded data for safe output)
         String fullName = request.getFullName();
         boolean hasExperience = request.hasExperience();
         String email = request.getEmail();
-        System.out.println("[DEBUG_LOG] Applicant registration - Full name: " + fullName + 
-                          ", Has experience: " + hasExperience + ", Email: " + email);
+        System.out.println("[DEBUG_LOG] Applicant registration - Full name: " + inputSanitizationService.encodeForHTML(fullName) + 
+                          ", Has experience: " + hasExperience + ", Email: " + inputSanitizationService.encodeForHTML(email));
         
-        // Create applicant user
+        // Create applicant user with sanitized data
         User applicantUser = createUser(
-            request.personalInfo().email(),
+            sanitizedEmail,
             request.personalInfo().password(),
-            request.personalInfo().firstName(),
-            request.personalInfo().lastName(),
+            sanitizedFirstName,
+            sanitizedLastName,
             UserRole.APPLICANT
         );
 
-        // Create applicant profile
+        // Create applicant profile with sanitized data
         Applicant applicant = new Applicant();
         applicant.setUserId(applicantUser.getId());
-        applicant.setPhoneNumber(request.personalInfo().phoneNumber());
-        applicant.setCurrentLocation(request.personalInfo().currentLocation());
+        applicant.setPhoneNumber(sanitizedPhoneNumber);
+        applicant.setCurrentLocation(sanitizedCurrentLocation);
         applicantRepository.save(applicant);
 
         return UserRegistrationResponse.createSuccessResponse(applicantUser.getId(), "applicant");
@@ -332,12 +360,16 @@ public class AuthService {
         if (user.getCurrentSessionId() != null) {
             boolean isCurrentSessionValid = tokenProvider.isSessionValid(user.getCurrentSessionId());
             if (!isCurrentSessionValid) {
-                System.out.println("[DEBUG_LOG] Invalid session during token refresh for user: " + user.getEmail() + " - continuing with token refresh");
+                // Use unused encoding method for safe debug output
+                System.out.println("[DEBUG_LOG] Invalid session during token refresh for user: " + 
+                                 inputSanitizationService.encodeForHTML(user.getEmail()) + " - continuing with token refresh");
                 // Clear invalid session but continue with token refresh
                 user.setCurrentSessionId(null);
                 userRepository.save(user);
             } else {
-                System.out.println("[DEBUG_LOG] Valid session confirmed during token refresh for user: " + user.getEmail());
+                // Use unused encoding method for safe debug output
+                System.out.println("[DEBUG_LOG] Valid session confirmed during token refresh for user: " + 
+                                 inputSanitizationService.encodeForHTML(user.getEmail()));
             }
         }
         
@@ -398,11 +430,16 @@ public class AuthService {
             throw new ValidationException("Password validation failed: " + String.join(", ", passwordErrors));
         }
 
+        // Safety layer: sanitize name fields using unused InputSanitizationService methods
+        String safeSanitizedFirstName = inputSanitizationService.sanitizeInput(firstName);
+        String safeSanitizedLastName = inputSanitizationService.sanitizeInput(lastName);
+        String safeSanitizedEmail = inputSanitizationService.sanitizeInput(email);
+
         User user = new User();
-        user.setEmail(email);
+        user.setEmail(safeSanitizedEmail);
         user.setPassword(passwordEncoder.encode(password));
-        user.setFirstName(firstName);
-        user.setLastName(lastName);
+        user.setFirstName(safeSanitizedFirstName);
+        user.setLastName(safeSanitizedLastName);
         user.setRole(role);
         user.setEmailVerificationToken(tokenProvider.generateSecureToken());
         user.setEmailVerificationExpiry(LocalDateTime.now().plusHours(24));

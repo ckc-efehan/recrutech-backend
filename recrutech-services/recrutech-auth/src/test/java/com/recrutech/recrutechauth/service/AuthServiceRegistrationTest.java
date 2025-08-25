@@ -4,6 +4,7 @@ import com.recrutech.recrutechauth.dto.registration.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,7 @@ class AuthServiceRegistrationTest {
     @Mock private PasswordValidator passwordValidator;
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
+    @Mock private InputSanitizationService inputSanitizationService;
 
     private AuthService authService;
 
@@ -52,7 +54,8 @@ class AuthServiceRegistrationTest {
             passwordEncoder,
             passwordValidator,
             tokenProvider,
-            securityService
+            securityService,
+            inputSanitizationService
         );
     }
 
@@ -72,6 +75,7 @@ class AuthServiceRegistrationTest {
             .build();
 
         // Mock dependencies
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(companyRepository.existsByBusinessEmail(anyString())).thenReturn(false);
         when(companyRepository.existsByTelephone(anyString())).thenReturn(false);
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
@@ -111,6 +115,7 @@ class AuthServiceRegistrationTest {
             .build();
 
         // Mock dependencies
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(companyRepository.findById(anyString())).thenReturn(java.util.Optional.of(new com.recrutech.recrutechauth.model.Company()));
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(passwordValidator.validate(anyString())).thenReturn(List.of());
@@ -144,6 +149,7 @@ class AuthServiceRegistrationTest {
             .build();
 
         // Mock dependencies
+        when(inputSanitizationService.sanitizeInput(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
         when(passwordValidator.validate(anyString())).thenReturn(List.of());
         when(passwordEncoder.encode(anyString())).thenReturn("encoded_password");

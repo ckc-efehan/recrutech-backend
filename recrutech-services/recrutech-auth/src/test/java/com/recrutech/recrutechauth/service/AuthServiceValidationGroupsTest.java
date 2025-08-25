@@ -5,6 +5,7 @@ import com.recrutech.recrutechauth.dto.common.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -39,6 +40,7 @@ class AuthServiceValidationGroupsTest {
     @Mock private PasswordValidator passwordValidator;
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
+    @Mock private InputSanitizationService inputSanitizationService;
     @Mock private Validator validator;
 
     private AuthService authService;
@@ -53,7 +55,8 @@ class AuthServiceValidationGroupsTest {
             passwordEncoder,
             passwordValidator,
             tokenProvider,
-            securityService
+            securityService,
+            inputSanitizationService
         );
     }
 

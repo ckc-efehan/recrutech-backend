@@ -4,6 +4,7 @@ import com.recrutech.recrutechauth.dto.registration.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
+import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
 import com.recrutech.recrutechauth.exception.ConflictException;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,7 @@ class AuthServiceBusinessRulesTest {
     @Mock private PasswordValidator passwordValidator;
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
+    @Mock private InputSanitizationService inputSanitizationService;
 
     private AuthService authService;
 
@@ -49,7 +51,8 @@ class AuthServiceBusinessRulesTest {
             passwordEncoder,
             passwordValidator,
             tokenProvider,
-            securityService
+            securityService,
+            inputSanitizationService
         );
     }
 

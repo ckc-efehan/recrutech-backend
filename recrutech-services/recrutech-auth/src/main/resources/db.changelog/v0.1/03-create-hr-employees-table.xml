@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# HR Management Module - HR Employees Table
+# Version: 1.0.0
+# Author: Efehan Cekic [efehan.cekic@student.htw-berlin.de]
+# Description: Creates the hr_employees table for managing HR employee information and relationships
+# Dependencies: users table (for user_id foreign key), companies table (for company_id foreign key)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create hr_employees table for HR employee management -->
+    <changeSet id="create-hr-employees-table-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates the hr_employees table for managing HR employee information:
+            - Links HR users to their companies
+            - Stores HR-specific information (department, position, hire date)
+            - Employee identification and status tracking
+            - Supports HR employee lifecycle management
+        </comment>
+        
+        <createTable tableName="hr_employees">
+            <!-- Primary Key and Base Entity Fields -->
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Relationship Fields -->
+            <column name="user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="company_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- HR Employee Information -->
+            <column name="department" type="varchar(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="position" type="varchar(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="hire_date" type="date">
+                <constraints nullable="true"/>
+            </column>
+            <column name="employee_id" type="varchar(50)">
+                <constraints nullable="true"/>
+            </column>
+            
+            <!-- Status and Management -->
+            <column name="active" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create performance indexes for hr_employees table -->
+    <changeSet id="create-hr-employees-indexes-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates essential indexes for the hr_employees table to optimize query performance:
+            - User ID index for user-employee relationships
+            - Company ID index for company-employee relationships
+            - Employee ID index for employee lookup
+            - Department index for organizational queries
+            - Active status index for filtering active employees
+        </comment>
+        
+        <createIndex tableName="hr_employees" indexName="idx_hr_employees_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        
+        <createIndex tableName="hr_employees" indexName="idx_hr_employees_company_id">
+            <column name="company_id"/>
+        </createIndex>
+        
+        <createIndex tableName="hr_employees" indexName="idx_hr_employees_employee_id">
+            <column name="employee_id"/>
+        </createIndex>
+        
+        <createIndex tableName="hr_employees" indexName="idx_hr_employees_department">
+            <column name="department"/>
+        </createIndex>
+        
+        <createIndex tableName="hr_employees" indexName="idx_hr_employees_active">
+            <column name="active"/>
+        </createIndex>
+        
+        <!-- Composite index for company-user relationship -->
+        <createIndex tableName="hr_employees" indexName="idx_hr_employees_company_user">
+            <column name="company_id"/>
+            <column name="user_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add foreign key constraints for hr_employees table -->
+    <changeSet id="create-hr-employees-foreign-keys-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates foreign key constraints for the hr_employees table:
+            - Links user_id to users.id to ensure referential integrity
+            - Links company_id to companies.id to ensure valid company relationships
+            - Ensures that HR employees are always linked to valid users and companies
+        </comment>
+        
+        <addForeignKeyConstraint 
+            baseTableName="hr_employees" 
+            baseColumnNames="user_id"
+            constraintName="fk_hr_employees_user"
+            referencedTableName="users" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+            
+        <addForeignKeyConstraint 
+            baseTableName="hr_employees" 
+            baseColumnNames="company_id"
+            constraintName="fk_hr_employees_company"
+            referencedTableName="companies" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+    </changeSet>
+
+    <!-- Add unique constraints for hr_employees table -->
+    <changeSet id="create-hr-employees-unique-constraints-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates unique constraints for the hr_employees table:
+            - Ensures one HR employee record per user (user_id unique)
+            - Ensures unique employee IDs within each company
+        </comment>
+        
+        <addUniqueConstraint 
+            tableName="hr_employees" 
+            columnNames="user_id" 
+            constraintName="uk_hr_employees_user_id"/>
+            
+        <addUniqueConstraint 
+            tableName="hr_employees" 
+            columnNames="company_id,employee_id" 
+            constraintName="uk_hr_employees_company_employee_id"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,2 @@
+include:
+  - recrutech-services/docker-compose.yml

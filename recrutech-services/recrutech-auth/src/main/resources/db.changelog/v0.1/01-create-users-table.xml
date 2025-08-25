@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Authentication Core Module - Users Table
+# Version: 1.0.0
+# Author: Efehan Cekic [efehan.cekic@student.htw-berlin.de]
+# Description: Creates the core users table with comprehensive authentication and security features
+# Dependencies: None (base table)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create users table with comprehensive authentication features -->
+    <changeSet id="create-users-table-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates the core users table with all authentication and security features:
+            - Basic user information (email, password, names, role)
+            - Email verification system
+            - Account security (failed attempts, lockout)
+            - Password management (reset, expiry)
+            - Two-factor authentication support
+            - Session and token management
+            - Login tracking and audit fields
+        </comment>
+        
+        <createTable tableName="users">
+            <!-- Primary Key and Base Entity Fields -->
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Core User Information -->
+            <column name="email" type="varchar(254)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="password" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="first_name" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_name" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Account Status Fields -->
+            <column name="enabled" type="boolean" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email_verified" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Email Verification System -->
+            <column name="email_verification_token" type="varchar(255)"/>
+            <column name="email_verification_expiry" type="datetime"/>
+            
+            <!-- Security and Account Protection -->
+            <column name="failed_login_attempts" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_failed_login" type="datetime"/>
+            <column name="account_locked_until" type="datetime"/>
+            
+            <!-- Password Management -->
+            <column name="password_reset_token" type="varchar(255)"/>
+            <column name="password_reset_expiry" type="datetime"/>
+            <column name="last_password_change" type="datetime"/>
+            
+            <!-- Two-Factor Authentication -->
+            <column name="two_factor_secret" type="varchar(255)"/>
+            <column name="two_factor_enabled" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="backup_codes" type="text"/>
+            
+            <!-- Session and Token Management -->
+            <column name="current_session_id" type="varchar(255)"/>
+            <column name="last_login_at" type="datetime"/>
+            <column name="last_login_ip" type="varchar(45)"/>
+            <column name="current_access_token" type="text"/>
+            <column name="current_refresh_token" type="text"/>
+            <column name="token_expires_at" type="datetime"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Create performance indexes for users table -->
+    <changeSet id="create-users-indexes-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates essential indexes for the users table to optimize query performance:
+            - Email index for login operations
+            - Role index for authorization queries
+            - Session ID index for session management
+        </comment>
+        
+        <createIndex tableName="users" indexName="idx_users_email">
+            <column name="email"/>
+        </createIndex>
+        
+        <createIndex tableName="users" indexName="idx_users_role">
+            <column name="role"/>
+        </createIndex>
+        
+        <createIndex tableName="users" indexName="idx_users_session_id">
+            <column name="current_session_id"/>
+        </createIndex>
+        
+        <createIndex tableName="users" indexName="idx_users_email_verification">
+            <column name="email_verification_token"/>
+        </createIndex>
+        
+        <createIndex tableName="users" indexName="idx_users_password_reset">
+            <column name="password_reset_token"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

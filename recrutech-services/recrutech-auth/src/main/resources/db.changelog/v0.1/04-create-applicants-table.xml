@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Applicant Management Module - Applicants Table
+# Version: 1.0.0
+# Author: Efehan Cekic [efehan.cekic@student.htw-berlin.de]
+# Description: Creates the applicants table for managing job applicant profiles and information
+# Dependencies: users table (for user_id foreign key)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create applicants table for applicant profile management -->
+    <changeSet id="create-applicants-table-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates the applicants table for managing job applicant profiles:
+            - Links applicant users to their profile information
+            - Stores personal and professional information
+            - Contact details and location information
+            - Profile completion tracking
+            - Professional links (LinkedIn, resume)
+        </comment>
+        
+        <createTable tableName="applicants">
+            <!-- Primary Key and Base Entity Fields -->
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- User Relationship -->
+            <column name="user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Personal Information -->
+            <column name="phone_number" type="varchar(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="date_of_birth" type="date">
+                <constraints nullable="true"/>
+            </column>
+            <column name="current_location" type="varchar(255)">
+                <constraints nullable="true"/>
+            </column>
+            
+            <!-- Professional Information -->
+            <column name="linkedin_profile" type="varchar(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="resume_url" type="varchar(500)">
+                <constraints nullable="true"/>
+            </column>
+            
+            <!-- Profile Management -->
+            <column name="profile_complete" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create performance indexes for applicants table -->
+    <changeSet id="create-applicants-indexes-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates essential indexes for the applicants table to optimize query performance:
+            - User ID index for user-applicant relationships
+            - Location index for location-based searches
+            - Profile completion index for filtering complete profiles
+            - Phone number index for contact lookup
+            - LinkedIn profile index for professional network searches
+        </comment>
+        
+        <createIndex tableName="applicants" indexName="idx_applicants_user_id">
+            <column name="user_id"/>
+        </createIndex>
+        
+        <createIndex tableName="applicants" indexName="idx_applicants_current_location">
+            <column name="current_location"/>
+        </createIndex>
+        
+        <createIndex tableName="applicants" indexName="idx_applicants_profile_complete">
+            <column name="profile_complete"/>
+        </createIndex>
+        
+        <createIndex tableName="applicants" indexName="idx_applicants_phone_number">
+            <column name="phone_number"/>
+        </createIndex>
+        
+        <createIndex tableName="applicants" indexName="idx_applicants_linkedin_profile">
+            <column name="linkedin_profile"/>
+        </createIndex>
+        
+        <!-- Composite index for location and profile completion -->
+        <createIndex tableName="applicants" indexName="idx_applicants_location_complete">
+            <column name="current_location"/>
+            <column name="profile_complete"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Add foreign key constraints for applicants table -->
+    <changeSet id="create-applicants-foreign-keys-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates foreign key constraints for the applicants table:
+            - Links user_id to users.id to ensure referential integrity
+            - Ensures that applicants are always linked to valid users
+        </comment>
+        
+        <addForeignKeyConstraint 
+            baseTableName="applicants" 
+            baseColumnNames="user_id"
+            constraintName="fk_applicants_user"
+            referencedTableName="users" 
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+    </changeSet>
+
+    <!-- Add unique constraints for applicants table -->
+    <changeSet id="create-applicants-unique-constraints-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates unique constraints for the applicants table:
+            - Ensures one applicant profile per user (user_id unique)
+            - Ensures unique phone numbers across all applicants
+            - Ensures unique LinkedIn profiles across all applicants
+        </comment>
+        
+        <addUniqueConstraint 
+            tableName="applicants" 
+            columnNames="user_id" 
+            constraintName="uk_applicants_user_id"/>
+            
+        <addUniqueConstraint 
+            tableName="applicants" 
+            columnNames="phone_number" 
+            constraintName="uk_applicants_phone_number"/>
+            
+        <addUniqueConstraint 
+            tableName="applicants" 
+            columnNames="linkedin_profile" 
+            constraintName="uk_applicants_linkedin_profile"/>
+    </changeSet>
+
+    <!-- Add check constraints for applicants table -->
+    <changeSet id="create-applicants-check-constraints-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates check constraints for the applicants table:
+            - Validates phone number format
+            - Validates LinkedIn profile URL format
+            - Validates resume URL format
+        </comment>
+        
+        <sql>
+            ALTER TABLE applicants 
+            ADD CONSTRAINT chk_applicants_phone_format 
+            CHECK (phone_number IS NULL OR phone_number REGEXP '^[+]?[0-9\s\-\(\)]{7,20}$');
+        </sql>
+        
+        <sql>
+            ALTER TABLE applicants 
+            ADD CONSTRAINT chk_applicants_linkedin_format 
+            CHECK (linkedin_profile IS NULL OR linkedin_profile LIKE 'https://www.linkedin.com/%' OR linkedin_profile LIKE 'https://linkedin.com/%');
+        </sql>
+        
+        <sql>
+            ALTER TABLE applicants 
+            ADD CONSTRAINT chk_applicants_resume_url_format 
+            CHECK (resume_url IS NULL OR resume_url LIKE 'http%');
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

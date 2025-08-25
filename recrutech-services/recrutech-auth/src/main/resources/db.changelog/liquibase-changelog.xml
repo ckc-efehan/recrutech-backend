@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Recrutech Authentication Service - Database Schema
+# Version: 1.0.0
+# Author: Efehan Cekic [efehan.cekic@student.htw-berlin.de]
+# Description: Master changelog file for the Recrutech authentication service database schema
+# 
+# This file orchestrates the creation of all database tables and constraints
+# in the proper dependency order to ensure referential integrity.
+#
+# Schema Overview:
+# - Core Authentication: Users table with comprehensive security features
+# - Company Management: Companies table for business entities
+# - HR Management: HR employees table linking users to companies
+# - Applicant Management: Applicants table for job seekers
+#
+# Dependency Order:
+# 1. users (base table, no dependencies)
+# 2. companies (depends on users for admin_user_id)
+# 3. hr_employees (depends on users and companies)
+# 4. applicants (depends on users)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 
+    ========================================
+    VERSION 1.0 - INITIAL SCHEMA CREATION
+    ========================================
+    -->
+    
+    <!-- Step 1: Create core authentication infrastructure -->
+    <include file="/db.changelog/v0.1/01-create-users-table.xml"/>
+    
+    <!-- Step 2: Create company management infrastructure -->
+    <include file="/db.changelog/v0.1/02-create-companies-table.xml"/>
+    
+    <!-- Step 3: Create HR management infrastructure -->
+    <include file="/db.changelog/v0.1/03-create-hr-employees-table.xml"/>
+    
+    <!-- Step 4: Create applicant management infrastructure -->
+    <include file="/db.changelog/v0.1/04-create-applicants-table.xml"/>
+
+    <!-- 
+    ========================================
+    FUTURE VERSIONS
+    ========================================
+    Future schema changes should be added here with proper versioning:
+    - v1.1: Additional indexes or constraints
+    - v1.2: New tables or columns
+    - v2.0: Major schema changes
+    -->
+
+</databaseChangeLog>

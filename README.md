@@ -1,90 +1,90 @@
 # RecruTech Backend
 
-Ein modernes, mikroservice-basiertes Backend-System für Recruitment-Technologie, entwickelt mit Spring Boot und Java 21.
+A modern, microservice-based backend system for recruitment technology, built with Spring Boot and Java 21.
 
-## 📋 Projektübersicht
+## Project Overview
 
-RecruTech Backend ist eine umfassende Plattform für Personalvermittlung und Bewerbermanagement. Das System bietet sichere Authentifizierung, Benutzerverwaltung und GDPR-konforme Datenverarbeitung für verschiedene Benutzertypen (Unternehmen, HR-Mitarbeiter, Bewerber).
+RecruTech Backend is a comprehensive platform for recruitment and applicant management. The system provides secure authentication, user management, and GDPR-compliant data processing for different user types (companies, HR employees, applicants).
 
-## 🏗️ Architektur
+## Architecture
 
-Das Projekt folgt einer modularen Mikroservice-Architektur:
+The project follows a modular microservice architecture:
 
 ```
 recrutech-backend/
 ├── recrutech-services/
-│   ├── recrutech-auth/          # Authentifizierungsservice
-│   └── recrutech-common/        # Gemeinsame Utilities und DTOs
-├── docker-compose.yml           # Container-Orchestrierung
-└── pom.xml                     # Root Maven-Konfiguration
+│   ├── recrutech-auth/          # Authentication service
+│   └── recrutech-common/        # Shared utilities and DTOs
+├── docker-compose.yml           # Container orchestration
+└── pom.xml                     # Root Maven configuration
 ```
 
-## 🚀 Technologie-Stack
+## Technology Stack
 
 ### Backend Framework
-- **Spring Boot 3.5.5** - Hauptframework
-- **Java 21** - Programmiersprache
-- **Maven** - Build-Management
+- **Spring Boot 3.5.5** - Main framework
+- **Java 21** - Programming language
+- **Maven** - Build management
 
-### Sicherheit & Authentifizierung
-- **Spring Security** - Sicherheitsframework
-- **JWT (JSON Web Tokens)** - Token-basierte Authentifizierung
-- **JJWT 0.12.3** - JWT-Implementierung
+### Security & Authentication
+- **Spring Security** - Security framework
+- **JWT (JSON Web Tokens)** - Token-based authentication
+- **JJWT 0.12.3** - JWT implementation
 
-### Datenbank & Persistierung
-- **MySQL 8.0** - Primäre Datenbank
-- **Spring Data JPA** - ORM-Framework
-- **Liquibase** - Datenbank-Migrationen
-- **Redis** - Caching und Session-Management
+### Database & Persistence
+- **MySQL 8.0** - Primary database
+- **Spring Data JPA** - ORM framework
+- **Liquibase** - Database migrations
+- **Redis** - Caching and session management
 
-### Entwicklungstools
-- **Lombok** - Code-Generierung
-- **Spring Boot DevTools** - Entwicklungsunterstützung
-- **H2 Database** - In-Memory-Datenbank für Tests
+### Development Tools
+- **Lombok** - Code generation
+- **Spring Boot DevTools** - Development support
+- **H2 Database** - In-memory database for tests
 
 ### Testing
-- **Spring Boot Test** - Test-Framework
-- **Spring Security Test** - Sicherheitstests
+- **Spring Boot Test** - Test framework
+- **Spring Security Test** - Security tests
 
-## 📦 Installation & Setup
+## Installation & Setup
 
-### Voraussetzungen
-- Java 21 oder höher
+### Prerequisites
+- Java 21 or higher
 - Maven 3.6+
 - Docker & Docker Compose
-- MySQL 8.0 (optional, wird über Docker bereitgestellt)
+- MySQL 8.0 (optional, provided via Docker)
 
-### 1. Repository klonen
+### 1. Clone Repository
 ```bash
 git clone <repository-url>
 cd recrutech-backend
 ```
 
-### 2. Datenbank starten
+### 2. Start Database
 ```bash
 docker-compose up -d mysql
 ```
 
-### 3. Anwendung kompilieren
+### 3. Compile Application
 ```bash
 mvn clean compile
 ```
 
-### 4. Authentifizierungsservice starten
+### 4. Start Authentication Service
 ```bash
 cd recrutech-services/recrutech-auth
 mvn spring-boot:run
 ```
 
-Die Anwendung ist dann unter `http://localhost:8080` verfügbar.
+The application will be available at `http://localhost:8080`.
 
-## 🔌 API-Dokumentation
+## API Documentation
 
-### Authentifizierung Endpoints
+### Authentication Endpoints
 
 **Base URL:** `/api/auth`
 
-#### 🔐 Login
+#### Login
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -95,9 +95,9 @@ Content-Type: application/json
 }
 ```
 
-#### 📝 Registrierung
+#### Registration
 
-**Unternehmen registrieren:**
+**Register Company:**
 ```http
 POST /api/auth/register/company
 Content-Type: application/json
@@ -109,7 +109,7 @@ Content-Type: application/json
 }
 ```
 
-**HR-Benutzer registrieren:**
+**Register HR User:**
 ```http
 POST /api/auth/register/hr
 Content-Type: application/json
@@ -122,7 +122,7 @@ Content-Type: application/json
 }
 ```
 
-**Bewerber registrieren:**
+**Register Applicant:**
 ```http
 POST /api/auth/register/applicant
 Content-Type: application/json
@@ -135,7 +135,7 @@ Content-Type: application/json
 }
 ```
 
-#### 🔄 Token-Management
+#### Token Management
 ```http
 POST /api/auth/refresh
 Content-Type: application/json
@@ -145,7 +145,7 @@ Content-Type: application/json
 }
 ```
 
-#### 🚪 Logout
+#### Logout
 ```http
 POST /api/auth/logout
 Authorization: Bearer <access-token>
@@ -157,90 +157,82 @@ Content-Type: application/json
 }
 ```
 
-#### 💚 Health Check
+#### Health Check
 ```http
 GET /api/auth/health
 ```
 
-## 🛠️ Entwicklung
+## Development
 
-### Lokale Entwicklung
-1. Starten Sie die MySQL-Datenbank über Docker Compose
-2. Konfigurieren Sie die Anwendungseigenschaften in `application.yml`
-3. Führen Sie die Anwendung im Development-Modus aus:
+### Local Development
+1. Start the MySQL database via Docker Compose
+2. Configure application properties in `application.yml`
+3. Run the application in development mode:
    ```bash
    mvn spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
-### Tests ausführen
+### Running Tests
 ```bash
-# Alle Tests
+# All tests
 mvn test
 
-# Nur Authentifizierungsservice-Tests
+# Authentication service tests only
 cd recrutech-services/recrutech-auth
 mvn test
 ```
 
-### Code-Stil
-Das Projekt verwendet Lombok für die Reduzierung von Boilerplate-Code. Stellen Sie sicher, dass Ihr IDE das Lombok-Plugin installiert hat.
+### Code Style
+The project uses Lombok to reduce boilerplate code. Ensure your IDE has the Lombok plugin installed.
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
-### Vollständiges System starten
+### Start Complete System
 ```bash
 docker-compose up -d
 ```
 
-### Nur Datenbank starten
+### Start Database Only
 ```bash
 docker-compose up -d mysql
 ```
 
-## 🔧 Konfiguration
+## Configuration
 
-### Umgebungsvariablen
-- `MYSQL_ROOT_PASSWORD` - MySQL Root-Passwort
-- `MYSQL_DATABASE` - Datenbankname (Standard: recrutech)
-- `MYSQL_USER` - Datenbankbenutzer
-- `MYSQL_PASSWORD` - Datenbankpasswort
+### Environment Variables
+- `MYSQL_ROOT_PASSWORD` - MySQL root password
+- `MYSQL_DATABASE` - Database name (default: recrutech)
+- `MYSQL_USER` - Database user
+- `MYSQL_PASSWORD` - Database password
 
-### Anwendungskonfiguration
-Die Hauptkonfiguration befindet sich in:
+### Application Configuration
+Main configuration is located in:
 - `recrutech-services/recrutech-auth/src/main/resources/application.yml`
 
-## 🔒 Sicherheitsfeatures
+## Security Features
 
-- **JWT-basierte Authentifizierung** mit Access- und Refresh-Tokens
-- **Passwort-Hashing** mit sicheren Algorithmen
-- **IP-Tracking** und User-Agent-Logging für Sicherheitsüberwachung
-- **CORS-Konfiguration** für sichere Cross-Origin-Requests
-- **Eingabevalidierung** mit Bean Validation
-- **GDPR-Compliance** mit dedizierten Endpoints
+- **JWT-based Authentication** with access and refresh tokens
+- **Password Hashing** with secure algorithms
+- **IP Tracking** and user agent logging for security monitoring
+- **CORS Configuration** for secure cross-origin requests
+- **Input Validation** with Bean Validation
+- **GDPR Compliance** with dedicated endpoints
 
-## 📊 Monitoring & Logging
+## Monitoring & Logging
 
-Das System bietet:
-- Health Check Endpoints für Systemüberwachung
-- Umfassendes Logging für Debugging und Audit
-- Sicherheitsmonitoring für verdächtige Aktivitäten
+The system provides:
+- Health check endpoints for system monitoring
+- Comprehensive logging for debugging and audit
+- Security monitoring for suspicious activities
 
-## 🤝 Beitragen
+## Contributing
 
-1. Fork das Repository
-2. Erstellen Sie einen Feature-Branch (`git checkout -b feature/AmazingFeature`)
-3. Committen Sie Ihre Änderungen (`git commit -m 'Add some AmazingFeature'`)
-4. Push zum Branch (`git push origin feature/AmazingFeature`)
-5. Öffnen Sie einen Pull Request
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📄 Lizenz
+## License
 
-Dieses Projekt ist unter der [MIT Lizenz](LICENSE) lizenziert.
-
-## 📞 Support
-
-Bei Fragen oder Problemen erstellen Sie bitte ein Issue im Repository oder kontaktieren Sie das Entwicklungsteam.
-
----
-
-**Entwickelt mit ❤️ für moderne Recruitment-Lösungen**
+This project is licensed under the [MIT License](LICENSE).

@@ -2,14 +2,11 @@ package com.recrutech.recrutechauth.dto.gdpr;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.extern.jackson.Jacksonized;
 
 /**
- * Request DTO for GDPR Right to Rectification (Art. 16).
- * Used when a user requests correction of their personal data.
+ * Request DTO for GDPR data rectification (Right to Rectification - Art. 16).
  */
 @Builder
 @Jacksonized
@@ -17,24 +14,31 @@ import lombok.extern.jackson.Jacksonized;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RectificationRequest(
     
-    PersonalDataUpdate personalData,
+    String fieldName,
     
-    Object roleSpecificData, // Can be HRDataUpdate, ApplicantDataUpdate, or CompanyDataUpdate
+    String oldValue,
     
-    @Size(max = 1000, message = "Rectification reason cannot exceed 1000 characters")
-    String reason
+    String newValue,
+    
+    String reason,
+    
+    Object personalData,
+    
+    Object roleSpecificData
 ) {
     
     /**
-     * Validates the rectification request
+     * Validates business rules for rectification request
      */
     public void validateBusinessRules() {
-        if (personalData == null && roleSpecificData == null) {
-            throw new IllegalArgumentException("At least one data field must be provided for rectification");
+        if (fieldName == null || fieldName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Field name is required");
         }
-        
-        if (personalData != null) {
-            personalData.validateBusinessRules();
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("Rectification reason is required");
+        }
+        if (newValue == null || newValue.trim().isEmpty()) {
+            throw new IllegalArgumentException("New value is required");
         }
     }
 }

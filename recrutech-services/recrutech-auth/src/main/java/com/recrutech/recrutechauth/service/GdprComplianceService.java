@@ -133,7 +133,7 @@ public class GdprComplianceService {
         try {
             // Update personal data
             if (request.personalData() != null) {
-                updatePersonalData(user, request.personalData());
+                updatePersonalData(user, (PersonalDataUpdate) request.personalData());
             }
 
             // Update role-specific data

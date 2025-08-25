@@ -63,7 +63,7 @@ class GdprComplianceServiceTest {
         // Given
         DeletionRequest request = DeletionRequest.builder()
             .reason("No longer need the service")
-            .confirmDataLoss(true)
+            .confirmDeletion(true)
             .build();
 
         Applicant applicant = new Applicant();
@@ -94,7 +94,7 @@ class GdprComplianceServiceTest {
         // Given
         DeletionRequest request = DeletionRequest.builder()
             .reason("Test deletion")
-            .confirmDataLoss(true)
+            .confirmDeletion(true)
             .build();
 
         when(userRepository.findById("nonexistent")).thenReturn(Optional.empty());
@@ -112,7 +112,7 @@ class GdprComplianceServiceTest {
         // Given
         DeletionRequest request = DeletionRequest.builder()
             .reason("Test deletion")
-            .confirmDataLoss(true)
+            .confirmDeletion(true)
             .build();
 
         when(userRepository.findById("user-123")).thenReturn(Optional.of(testUser));
@@ -263,7 +263,7 @@ class GdprComplianceServiceTest {
         testUser.setRole(UserRole.HR);
         DeletionRequest request = DeletionRequest.builder()
             .reason("Leaving company")
-            .confirmDataLoss(true)
+            .confirmDeletion(true)
             .build();
 
         HREmployee hrEmployee = new HREmployee();

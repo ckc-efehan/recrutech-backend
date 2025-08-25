@@ -6,11 +6,9 @@ import lombok.Builder;
 import lombok.extern.jackson.Jacksonized;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
- * Response DTO for GDPR Right to Rectification (Art. 16).
- * Returned after processing a user's data rectification request.
+ * Response DTO for GDPR data rectification (Right to Rectification - Art. 16).
  */
 @Builder
 @Jacksonized
@@ -20,65 +18,24 @@ public record RectificationResponse(
     
     String userId,
     
-    LocalDateTime rectificationDate,
-    
-    String status, // COMPLETED, FAILED, PARTIAL
+    boolean success,
     
     String message,
     
-    List<String> updatedFields,
+    LocalDateTime rectificationDate,
     
-    List<String> failedFields,
-    
-    String confirmationId
+    String status
 ) {
     
     /**
-     * Creates a successful rectification response
-     */
-    public static RectificationResponse createSuccessResponse(String userId, List<String> updatedFields) {
-        return RectificationResponse.builder()
-            .userId(userId)
-            .rectificationDate(LocalDateTime.now())
-            .status("COMPLETED")
-            .message("Personal data has been successfully updated")
-            .updatedFields(updatedFields)
-            .confirmationId(generateConfirmationId())
-            .build();
-    }
-    
-    /**
-     * Creates a failed rectification response
+     * Creates a failure response for rectification request
      */
     public static RectificationResponse createFailureResponse(String userId, String errorMessage) {
         return RectificationResponse.builder()
             .userId(userId)
-            .rectificationDate(LocalDateTime.now())
-            .status("FAILED")
+            .success(false)
             .message(errorMessage)
+            .rectificationDate(null)
             .build();
-    }
-    
-    /**
-     * Creates a partial rectification response (some fields couldn't be updated)
-     */
-    public static RectificationResponse createPartialResponse(String userId, 
-                                                            List<String> updatedFields, 
-                                                            List<String> failedFields,
-                                                            String message) {
-        return RectificationResponse.builder()
-            .userId(userId)
-            .rectificationDate(LocalDateTime.now())
-            .status("PARTIAL")
-            .message(message)
-            .updatedFields(updatedFields)
-            .failedFields(failedFields)
-            .confirmationId(generateConfirmationId())
-            .build();
-    }
-    
-    private static String generateConfirmationId() {
-        return "RECT-" + System.currentTimeMillis() + "-" + 
-               Integer.toHexString((int)(Math.random() * 0xFFFF));
     }
 }

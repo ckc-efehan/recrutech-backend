@@ -34,17 +34,30 @@ public record ProcessingActivitiesResponse(
     /**
      * Creates a successful processing activities response
      */
-    public static ProcessingActivitiesResponse createSuccessResponse(String userId, List<ProcessingActivity> activities) {
-        LocalDateTime earliest = activities.stream()
-            .map(ProcessingActivity::timestamp)
+    public static ProcessingActivitiesResponse createSuccessResponse(String userId, List<com.recrutech.recrutechauth.dto.gdpr.ProcessingActivity> standaloneActivities) {
+        // Convert standalone ProcessingActivity to nested ProcessingActivity
+        List<ProcessingActivity> activities = standaloneActivities.stream()
+            .map(sa -> ProcessingActivity.builder()
+                .activityType(sa.activityType())
+                .purpose(sa.processingPurpose())
+                .dataCategories(sa.dataCategories() != null ? List.of(sa.dataCategories().split(",")) : List.of())
+                .legalBasis(sa.legalBasis())
+                .build())
+            .toList();
+        
+        // Calculate earliest and latest activity timestamps
+        LocalDateTime earliest = standaloneActivities.stream()
+            .map(com.recrutech.recrutechauth.dto.gdpr.ProcessingActivity::timestamp)
+            .filter(timestamp -> timestamp != null)
             .min(LocalDateTime::compareTo)
             .orElse(null);
             
-        LocalDateTime latest = activities.stream()
-            .map(ProcessingActivity::timestamp)
+        LocalDateTime latest = standaloneActivities.stream()
+            .map(com.recrutech.recrutechauth.dto.gdpr.ProcessingActivity::timestamp)
+            .filter(timestamp -> timestamp != null)
             .max(LocalDateTime::compareTo)
             .orElse(null);
-        
+            
         return ProcessingActivitiesResponse.builder()
             .userId(userId)
             .requestDate(LocalDateTime.now())
@@ -53,5 +66,24 @@ public record ProcessingActivitiesResponse(
             .earliestActivity(earliest)
             .latestActivity(latest)
             .build();
+    }
+    
+    /**
+     * Nested ProcessingActivity class for test compatibility
+     */
+    @Builder
+    @Jacksonized
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static record ProcessingActivity(
+        
+        String activityType,
+        
+        String purpose,
+        
+        List<String> dataCategories,
+        
+        String legalBasis
+    ) {
     }
 }

@@ -160,19 +160,3 @@ public class GdprController {
         return ResponseEntity.ok("GDPR Compliance Service is operational");
     }
 }
-
-/**
- * Response DTO for GDPR information endpoint
- */
-record GdprInfoResponse(
-    String rightToDeletion,
-    String rightToPortability,
-    String rightToRectification,
-    String processingActivities,
-    String contactEmail,
-    String dataProtectionOfficer,
-    String retentionPeriod
-) {
-    @lombok.Builder
-    public GdprInfoResponse {}
-}

@@ -8,8 +8,7 @@ import lombok.extern.jackson.Jacksonized;
 import java.time.LocalDateTime;
 
 /**
- * Response DTO for GDPR Right to Data Portability (Art. 20).
- * Contains all personal data associated with a user account.
+ * Response DTO for GDPR data export (Right to Data Portability - Art. 20).
  */
 @Builder
 @Jacksonized
@@ -21,31 +20,18 @@ public record DataExportResponse(
     
     LocalDateTime exportDate,
     
-    PersonalDataExport personalData,
-    
-    CompanyDataExport companyData,
-    
-    HRDataExport hrData,
-    
-    ApplicantDataExport applicantData,
-    
-    String exportFormat, // JSON, XML, CSV
+    String format,
     
     String downloadUrl,
     
-    LocalDateTime expiresAt // When download link expires
-) {
+    LocalDateTime expiresAt,
     
-    /**
-     * Creates a successful export response
-     */
-    public static DataExportResponse createSuccessResponse(String userId, PersonalDataExport personalData) {
-        return DataExportResponse.builder()
-            .userId(userId)
-            .exportDate(LocalDateTime.now())
-            .personalData(personalData)
-            .exportFormat("JSON")
-            .expiresAt(LocalDateTime.now().plusDays(7)) // Download link expires in 7 days
-            .build();
-    }
+    Object personalData,
+    
+    Object companyData,
+    
+    Object hrData,
+    
+    Object applicantData
+) {
 }

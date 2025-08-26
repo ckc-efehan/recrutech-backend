@@ -1,5 +1,11 @@
 # RecruTech Backend
 
+[![Java CI with Maven](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/maven.yml/badge.svg)](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/maven.yml)
+[![Qodana](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/qodana_code_quality.yml/badge.svg)](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/qodana_code_quality.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Java](https://img.shields.io/badge/Java-21-orange.svg)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.5-green.svg)
+
 A modern, microservice-based backend system for recruitment technology, built with Spring Boot and Java 21.
 
 ## Project Overview

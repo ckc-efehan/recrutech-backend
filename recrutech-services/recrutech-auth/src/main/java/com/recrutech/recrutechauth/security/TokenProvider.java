@@ -307,11 +307,12 @@ public class TokenProvider {
 
     /**
      * Generates a secure random token for various purposes.
+     * Uses URL-safe Base64 encoding to avoid URL encoding issues.
      */
     public String generateSecureToken() {
         byte[] randomBytes = new byte[32];
         new SecureRandom().nextBytes(randomBytes);
-        return Base64.getEncoder().encodeToString(randomBytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
     }
 
 

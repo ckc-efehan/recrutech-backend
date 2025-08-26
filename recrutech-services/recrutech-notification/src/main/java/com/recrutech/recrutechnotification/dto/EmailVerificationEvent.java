@@ -67,11 +67,19 @@ public class EmailVerificationEvent {
 
     /**
      * Creates a verification URL with the token.
+     * Uses proper URL encoding to ensure special characters are handled correctly.
      * @param baseUrl The base verification URL
      * @return Complete verification URL
      */
     public String createVerificationUrl(String baseUrl) {
-        return baseUrl + "?token=" + verificationToken + "&email=" + email;
+        try {
+            String encodedToken = java.net.URLEncoder.encode(verificationToken, java.nio.charset.StandardCharsets.UTF_8);
+            String encodedEmail = java.net.URLEncoder.encode(email, java.nio.charset.StandardCharsets.UTF_8);
+            return baseUrl + "?token=" + encodedToken + "&email=" + encodedEmail;
+        } catch (Exception e) {
+            // Fallback to direct concatenation if encoding fails
+            return baseUrl + "?token=" + verificationToken + "&email=" + email;
+        }
     }
 
     @Override

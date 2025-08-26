@@ -36,6 +36,7 @@ public class EmailService {
     @Value("${recrutech.email.verification-url}")
     private String verificationBaseUrl;
 
+
     /**
      * Sends an email verification email to the user.
      * @param event Email verification event containing user details
@@ -167,7 +168,8 @@ public class EmailService {
     }
 
     /**
-     * Creates a MIME message with HTML content.
+     * Creates a MIME message with HTML content following email best practices.
+     * Prevents Quoted-Printable encoding issues with verification URLs.
      * @param toEmail Recipient email address
      * @param toName Recipient name
      * @param subject Email subject
@@ -177,7 +179,7 @@ public class EmailService {
      */
     private MimeMessage createMimeMessage(String toEmail, String toName, String subject, String htmlContent) 
             throws MessagingException {
-        
+
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
         
@@ -195,14 +197,19 @@ public class EmailService {
         // Set subject
         helper.setSubject(subject);
         
-        // Set HTML content
+        // Set HTML content with proper encoding
         helper.setText(htmlContent, true);
         
-        // Add headers for better email client compatibility
-        message.addHeader("Content-Type", "text/html; charset=UTF-8");
+        // Add only necessary headers (avoid duplicate Content-Type)
+        // MimeMessageHelper already sets proper Content-Type, so we don't duplicate it
         message.addHeader("X-Mailer", "RecruTech Notification Service");
+        message.addHeader("MIME-Version", "1.0");
         
-        log.debug("[DEBUG_LOG] Created MIME message for: {} with subject: {}", toEmail, subject);
+        // Explicitly set Content-Transfer-Encoding to prevent Quoted-Printable issues
+        // Base64 encoding is more reliable for HTML emails with URLs containing special characters
+        message.setHeader("Content-Transfer-Encoding", "base64");
+        
+        log.debug("[DEBUG_LOG] Created MIME message for: {} with subject: {} using base64 encoding", toEmail, subject);
         
         return message;
     }
@@ -213,21 +220,24 @@ public class EmailService {
      * @throws IllegalArgumentException if validation fails
      */
     public void validateEmailEvent(Object event) {
-        if (event == null) {
-            throw new IllegalArgumentException("Email event cannot be null");
+        switch (event) {
+            case null -> throw new IllegalArgumentException("Email event cannot be null");
+            case EmailVerificationEvent verificationEvent -> {
+                if (verificationEvent.getEmail() == null || verificationEvent.getEmail().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Email address is required");
+                }
+                if (verificationEvent.getVerificationToken() == null || verificationEvent.getVerificationToken().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Verification token is required");
+                }
+            }
+            case WelcomeEmailEvent welcomeEvent -> {
+                if (welcomeEvent.getEmail() == null || welcomeEvent.getEmail().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Email address is required");
+                }
+            }
+            default -> {
+            }
         }
-        
-        if (event instanceof EmailVerificationEvent verificationEvent) {
-            if (verificationEvent.getEmail() == null || verificationEvent.getEmail().trim().isEmpty()) {
-                throw new IllegalArgumentException("Email address is required");
-            }
-            if (verificationEvent.getVerificationToken() == null || verificationEvent.getVerificationToken().trim().isEmpty()) {
-                throw new IllegalArgumentException("Verification token is required");
-            }
-        } else if (event instanceof WelcomeEmailEvent welcomeEvent) {
-            if (welcomeEvent.getEmail() == null || welcomeEvent.getEmail().trim().isEmpty()) {
-                throw new IllegalArgumentException("Email address is required");
-            }
-        }
+
     }
 }

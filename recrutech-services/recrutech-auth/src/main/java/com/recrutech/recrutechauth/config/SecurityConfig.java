@@ -110,7 +110,7 @@ public class SecurityConfig {
             
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register/**", "/api/auth/refresh", "/api/auth/health").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register/**", "/api/auth/refresh", "/api/auth/health", "/api/auth/verify-email").permitAll()
                 .requestMatchers("/api/gdpr/info", "/api/gdpr/health").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .anyRequest().authenticated())

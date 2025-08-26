@@ -7,7 +7,6 @@
         <artifactId>recrutech-services</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <groupId>com.recrutech</groupId>
     <artifactId>recrutech-notification</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>recrutech-notification</name>
@@ -104,6 +103,16 @@
                             <version>1.18.30</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <argLine>
+                        -XX:+EnableDynamicAgentLoading
+                    </argLine>
                 </configuration>
             </plugin>
             <plugin>

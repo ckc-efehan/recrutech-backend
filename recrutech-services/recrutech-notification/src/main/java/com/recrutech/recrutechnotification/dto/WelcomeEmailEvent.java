@@ -1,6 +1,5 @@
 package com.recrutech.recrutechnotification.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -87,17 +86,13 @@ public class WelcomeEmailEvent {
     @JsonIgnore
     public String getDisplayRoleName() {
         if (userRole == null) return "Unknown";
-        
-        switch (userRole.toUpperCase()) {
-            case "APPLICANT":
-                return "Bewerber";
-            case "HR":
-                return "HR-Manager";
-            case "COMPANY":
-                return "Unternehmen";
-            default:
-                return userRole;
-        }
+
+        return switch (userRole.toUpperCase()) {
+            case "APPLICANT" -> "Bewerber";
+            case "HR" -> "HR-Manager";
+            case "COMPANY" -> "Unternehmen";
+            default -> userRole;
+        };
     }
 
     /**

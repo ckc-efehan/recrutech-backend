@@ -237,7 +237,8 @@ public class RateLimitingFilter implements Filter {
             return false;
             
         } catch (Exception e) {
-            logger.error("Error checking rate limit for key: {}", key, e);
+            logger.warn("Error checking rate limit for key: {}", key);
+            logger.debug("Redis error details: ", e);
             // In case of Redis failure, allow the request (fail open)
             return false;
         }

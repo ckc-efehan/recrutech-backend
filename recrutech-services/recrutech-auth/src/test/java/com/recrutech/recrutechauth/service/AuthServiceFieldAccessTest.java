@@ -101,6 +101,6 @@ class AuthServiceFieldAccessTest {
         verify(companyRepository).existsByBusinessEmail("business@test.com");
         verify(companyRepository).existsByTelephone("1234567890");
         // Verify that auto-generated emails were used for user creation
-        verify(userRepository, times(4)).existsByEmail(anyString()); // 2 for existence check + 2 for user creation
+        verify(userRepository, times(4)).existsByEmail(anyString()); // 2 explicit checks in registerCompany + 2 calls within createUser method
     }
 }

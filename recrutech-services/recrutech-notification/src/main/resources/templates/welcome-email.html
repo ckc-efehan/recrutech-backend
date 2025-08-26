@@ -170,16 +170,21 @@
             </div>
             
             <!-- Role-specific content -->
-            <div th:if="${userRole == 'APPLICANT'}" class="role-specific">
+            <div th:if="${isApplicant}" class="role-specific">
                 <h3>🎯 Speziell für Bewerber:</h3>
-                <p>Als Bewerber können Sie jetzt personalisierte Jobempfehlungen erhalten, 
+                <p th:text="${roleSpecificMessage}">Als Bewerber können Sie jetzt personalisierte Jobempfehlungen erhalten, 
                 Ihren Lebenslauf hochladen und sich direkt über unsere Plattform bewerben.</p>
             </div>
             
-            <div th:if="${userRole == 'HR'}" class="role-specific">
+            <div th:if="${isHR}" class="role-specific">
                 <h3>💼 Speziell für HR-Manager:</h3>
-                <p>Als HR-Manager können Sie jetzt Stellenanzeigen erstellen, 
+                <p th:text="${roleSpecificMessage}">Als HR-Manager können Sie jetzt Stellenanzeigen erstellen, 
                 Bewerbungen verwalten und die besten Talente für Ihr Unternehmen finden.</p>
+            </div>
+            
+            <div th:if="${isCompany}" class="role-specific">
+                <h3>🏢 Speziell für Unternehmen:</h3>
+                <p th:text="${roleSpecificMessage}">Als Unternehmen können Sie jetzt Ihr Recruiting-Team verwalten und Stellenanzeigen schalten.</p>
             </div>
             
             <div class="cta-section">
@@ -211,7 +216,7 @@
             <p>Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.</p>
             <p style="font-size: 12px; color: #999;">
                 Konto aktiviert am: <span th:text="${#temporals.format(verificationDate, 'dd.MM.yyyy HH:mm')}">26.08.2025 11:00</span><br>
-                Benutzerrolle: <span th:text="${userRole}">Applicant</span>
+                Benutzerrolle: <span th:text="${displayRoleName}">Bewerber</span>
             </p>
         </div>
     </div>

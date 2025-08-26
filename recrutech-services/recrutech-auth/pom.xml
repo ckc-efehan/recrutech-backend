@@ -3,10 +3,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>com.recrutech</groupId>
+        <artifactId>recrutech-services</artifactId>
+        <version>1.0-SNAPSHOT</version>
     </parent>
     <groupId>com.recrutech</groupId>
     <artifactId>recrutech-auth</artifactId>
@@ -215,8 +214,26 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.30</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.3</version>
+                <configuration>
+                    <argLine>
+                        -XX:+EnableDynamicAgentLoading
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens java.base/java.util=ALL-UNNAMED
+                        --add-opens java.base/java.util.concurrent=ALL-UNNAMED
+                        -Djdk.instrument.traceUsage=false
+                    </argLine>
+                    <systemPropertyVariables>
+                        <mockito.mock.maker>mock-maker-inline</mockito.mock.maker>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>

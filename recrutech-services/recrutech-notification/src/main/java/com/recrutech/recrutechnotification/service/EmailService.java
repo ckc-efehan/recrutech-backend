@@ -70,7 +70,7 @@ public class EmailService {
             
         } catch (Exception e) {
             log.error("[DEBUG_LOG] Failed to send verification email to: {}. Error: {}", 
-                     event.getEmail(), e.getMessage(), e);
+                     event.getEmail(), e.getMessage());
             throw new MessagingException("Failed to send verification email", e);
         }
     }
@@ -104,7 +104,7 @@ public class EmailService {
             
         } catch (Exception e) {
             log.error("[DEBUG_LOG] Failed to send welcome email to: {}. Error: {}", 
-                     event.getEmail(), e.getMessage(), e);
+                     event.getEmail(), e.getMessage());
             throw new MessagingException("Failed to send welcome email", e);
         }
     }

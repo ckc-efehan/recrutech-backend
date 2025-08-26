@@ -160,10 +160,6 @@ public class EmailEventConsumer {
         }
     }
 
-    /**
-     * Handles dead letter queue events for failed email processing.
-     * This could be implemented later for handling persistent failures.
-     */
     // @KafkaListener(topics = "email-verification-dlq,welcome-email-dlq")
     // public void handleDeadLetterEvents(@Payload String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
     //     log.error("[DEBUG_LOG] Received dead letter event from topic: {}. Message: {}", topic, message);

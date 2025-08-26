@@ -7,6 +7,7 @@ import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
 import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
+import com.recrutech.recrutechauth.kafka.EmailEventProducer;
 import com.recrutech.recrutechauth.exception.ConflictException;
 import com.recrutech.common.exception.ValidationException;
 import com.recrutech.common.exception.NotFoundException;
@@ -46,6 +47,7 @@ class AuthServiceHelperMethodsTest {
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
     @Mock private InputSanitizationService inputSanitizationService;
+    @Mock private EmailEventProducer emailEventProducer;
 
     private AuthService authService;
 
@@ -60,7 +62,8 @@ class AuthServiceHelperMethodsTest {
             passwordValidator,
             tokenProvider,
             securityService,
-            inputSanitizationService
+            inputSanitizationService,
+            emailEventProducer
         );
     }
 

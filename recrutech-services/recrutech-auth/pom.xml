@@ -108,6 +108,12 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
         
+        <!-- Kafka for async email events -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        
         <!-- Security Libraries -->
         
         <!-- XSS: HTML bereinigen -->

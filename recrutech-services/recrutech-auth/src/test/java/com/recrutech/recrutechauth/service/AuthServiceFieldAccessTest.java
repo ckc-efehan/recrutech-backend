@@ -6,6 +6,7 @@ import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
 import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
+import com.recrutech.recrutechauth.kafka.EmailEventProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,7 @@ class AuthServiceFieldAccessTest {
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
     @Mock private InputSanitizationService inputSanitizationService;
+    @Mock private EmailEventProducer emailEventProducer;
 
     private AuthService authService;
 
@@ -55,7 +57,8 @@ class AuthServiceFieldAccessTest {
             passwordValidator,
             tokenProvider,
             securityService,
-            inputSanitizationService
+            inputSanitizationService,
+            emailEventProducer
         );
     }
 

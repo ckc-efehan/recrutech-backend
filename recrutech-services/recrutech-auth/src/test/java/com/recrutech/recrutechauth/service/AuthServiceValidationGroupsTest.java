@@ -1,12 +1,13 @@
 package com.recrutech.recrutechauth.service;
 
 import com.recrutech.recrutechauth.dto.registration.*;
-import com.recrutech.recrutechauth.dto.common.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.SecurityService;
 import com.recrutech.recrutechauth.security.TokenProvider;
 import com.recrutech.recrutechauth.security.InputSanitizationService;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
+import com.recrutech.recrutechauth.kafka.EmailEventProducer;
+import com.recrutech.recrutechauth.dto.common.ValidationGroups;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ class AuthServiceValidationGroupsTest {
     @Mock private TokenProvider tokenProvider;
     @Mock private SecurityService securityService;
     @Mock private InputSanitizationService inputSanitizationService;
+    @Mock private EmailEventProducer emailEventProducer;
     @Mock private Validator validator;
 
     private AuthService authService;
@@ -56,7 +58,8 @@ class AuthServiceValidationGroupsTest {
             passwordValidator,
             tokenProvider,
             securityService,
-            inputSanitizationService
+            inputSanitizationService,
+            emailEventProducer
         );
     }
 

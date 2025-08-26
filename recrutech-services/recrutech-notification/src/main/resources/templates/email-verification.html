@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Mail Bestätigung - RecruTech</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #2c5aa0;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            margin-bottom: 25px;
+            line-height: 1.8;
+        }
+        .verification-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #2c5aa0;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .verification-btn:hover {
+            background-color: #1e3f73;
+        }
+        .alternative-link {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #2c5aa0;
+        }
+        .alternative-link p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .link-url {
+            word-break: break-all;
+            color: #2c5aa0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        .footer p {
+            font-size: 14px;
+            color: #666;
+            margin: 10px 0;
+        }
+        .security-note {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .security-note strong {
+            color: #856404;
+        }
+        .expiry-info {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">RecruTech</div>
+            <div class="subtitle">Ihre Karriereplattform</div>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Hallo <span th:text="${firstName}">Max</span>!
+            </div>
+            
+            <div class="message">
+                <p>Herzlichen Glückwunsch zu Ihrer Registrierung bei RecruTech! 🎉</p>
+                
+                <p>Um Ihr Konto zu aktivieren und die Sicherheit Ihrer E-Mail-Adresse zu gewährleisten, 
+                klicken Sie bitte auf den folgenden Button:</p>
+                
+                <div style="text-align: center;">
+                    <a th:href="${verificationUrl}" class="verification-btn">
+                        E-Mail-Adresse bestätigen
+                    </a>
+                </div>
+                
+                <div class="alternative-link">
+                    <p><strong>Funktioniert der Button nicht?</strong></p>
+                    <p>Kopieren Sie diesen Link und fügen Sie ihn in Ihren Browser ein:</p>
+                    <p class="link-url" th:text="${verificationUrl}">http://localhost:8080/api/auth/verify-email?token=abc123</p>
+                </div>
+                
+                <div class="security-note">
+                    <p><strong>🔐 Sicherheitshinweis:</strong></p>
+                    <p>Dieser Bestätigungslink ist aus Sicherheitsgründen nur <span class="expiry-info">24 Stunden</span> gültig.</p>
+                    <p>Falls Sie sich nicht bei RecruTech registriert haben, ignorieren Sie diese E-Mail.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>RecruTech Team</strong></p>
+            <p>Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.</p>
+            <p style="font-size: 12px; color: #999;">
+                Sie erhalten diese E-Mail, weil Sie sich bei RecruTech registriert haben.<br>
+                Registriert am: <span th:text="${#temporals.format(registrationDate, 'dd.MM.yyyy HH:mm')}">26.08.2025 10:52</span>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -4,6 +4,7 @@ import com.recrutech.recrutechauth.model.*;
 import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.*;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
+import com.recrutech.recrutechauth.kafka.EmailEventProducer;
 import com.recrutech.recrutechauth.dto.auth.*;
 import com.recrutech.recrutechauth.dto.registration.*;
 import com.recrutech.recrutechauth.exception.BadCredentialsException;
@@ -41,6 +42,7 @@ public class AuthService {
     private final TokenProvider tokenProvider;
     private final SecurityService securityService;
     private final InputSanitizationService inputSanitizationService;
+    private final EmailEventProducer emailEventProducer;
 
     public AuthService(UserRepository userRepository,
                       CompanyRepository companyRepository,
@@ -50,7 +52,8 @@ public class AuthService {
                       PasswordValidator passwordValidator,
                       TokenProvider tokenProvider,
                       SecurityService securityService,
-                      InputSanitizationService inputSanitizationService) {
+                      InputSanitizationService inputSanitizationService,
+                      EmailEventProducer emailEventProducer) {
         this.userRepository = userRepository;
         this.companyRepository = companyRepository;
         this.hrEmployeeRepository = hrEmployeeRepository;
@@ -60,6 +63,7 @@ public class AuthService {
         this.tokenProvider = tokenProvider;
         this.securityService = securityService;
         this.inputSanitizationService = inputSanitizationService;
+        this.emailEventProducer = emailEventProducer;
     }
 
     /**
@@ -444,12 +448,83 @@ public class AuthService {
         user.setEmailVerificationToken(tokenProvider.generateSecureToken());
         user.setEmailVerificationExpiry(LocalDateTime.now().plusHours(24));
         user.setLastPasswordChange(LocalDateTime.now());
-        user.setEmailVerified(true); // Auto-verify since no email service
+        user.setEmailVerified(false); // User must verify email through verification link
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        
+        // Publish email verification event to Kafka
+        try {
+            emailEventProducer.publishEmailVerificationEvent(savedUser);
+            System.out.println("[DEBUG_LOG] Email verification event published for user: " + 
+                              inputSanitizationService.encodeForHTML(savedUser.getEmail()));
+        } catch (Exception e) {
+            System.out.println("[DEBUG_LOG] Failed to publish email verification event for user: " + 
+                              inputSanitizationService.encodeForHTML(savedUser.getEmail()) + ". Error: " + e.getMessage());
+            // Don't fail registration if email event fails - user can request resend
+        }
+        
+        return savedUser;
     }
 
-
+    /**
+     * Verifies user email using verification token.
+     * @param token Email verification token
+     * @param email User's email address
+     * @throws ValidationException if verification fails
+     */
+    @Transactional
+    public void verifyEmail(String token, String email) {
+        System.out.println("[DEBUG_LOG] Attempting email verification for: " + 
+                          inputSanitizationService.encodeForHTML(email));
+        
+        // Find user by email
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
+        
+        // Check if already verified
+        if (user.isEmailVerified()) {
+            System.out.println("[DEBUG_LOG] Email already verified for user: " + 
+                              inputSanitizationService.encodeForHTML(email));
+            throw new ValidationException("Email is already verified");
+        }
+        
+        // Validate verification token
+        if (user.getEmailVerificationToken() == null || 
+            !user.getEmailVerificationToken().equals(token)) {
+            System.out.println("[DEBUG_LOG] Invalid verification token for user: " + 
+                              inputSanitizationService.encodeForHTML(email));
+            throw new ValidationException("Invalid verification token");
+        }
+        
+        // Check if token is expired
+        if (user.getEmailVerificationExpiry() == null || 
+            user.getEmailVerificationExpiry().isBefore(LocalDateTime.now())) {
+            System.out.println("[DEBUG_LOG] Expired verification token for user: " + 
+                              inputSanitizationService.encodeForHTML(email));
+            throw new ValidationException("Verification token has expired");
+        }
+        
+        // Verify the email
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerificationExpiry(null);
+        
+        userRepository.save(user);
+        
+        System.out.println("[DEBUG_LOG] Email successfully verified for user: " + 
+                          inputSanitizationService.encodeForHTML(email));
+        
+        // Publish welcome email event to Kafka
+        try {
+            emailEventProducer.publishWelcomeEmailEvent(user);
+            System.out.println("[DEBUG_LOG] Welcome email event published for user: " + 
+                              inputSanitizationService.encodeForHTML(email));
+        } catch (Exception e) {
+            System.out.println("[DEBUG_LOG] Failed to publish welcome email event for user: " + 
+                              inputSanitizationService.encodeForHTML(email) + ". Error: " + e.getMessage());
+            // Don't fail verification if welcome email event fails
+        }
+    }
 
     private void validateCompanyAccess(String companyId, String invitationToken) {
         Company company = companyRepository.findById(companyId)

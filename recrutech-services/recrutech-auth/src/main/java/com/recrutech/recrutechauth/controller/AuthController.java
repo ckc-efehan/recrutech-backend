@@ -115,6 +115,24 @@ public class AuthController {
     }
 
     /**
+     * Email verification endpoint.
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(
+            @RequestParam("token") String token,
+            @RequestParam("email") String email) {
+        
+        try {
+            authService.verifyEmail(token, email);
+            // Return success response or redirect to frontend success page
+            return ResponseEntity.ok().body("E-Mail erfolgreich bestätigt! Sie können sich jetzt einloggen.");
+        } catch (Exception e) {
+            // Return error response or redirect to frontend error page
+            return ResponseEntity.badRequest().body("Ungültiger oder abgelaufener Bestätigungslink.");
+        }
+    }
+
+    /**
      * Health check endpoint.
      */
     @GetMapping("/health")

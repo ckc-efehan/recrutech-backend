@@ -13,4 +13,3 @@ updates:
       - "maven"
     commit-message:
       prefix: "deps"
-      include-scope: true

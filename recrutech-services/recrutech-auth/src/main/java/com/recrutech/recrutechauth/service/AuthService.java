@@ -526,6 +526,131 @@ public class AuthService {
         }
     }
 
+    /**
+     * Initiates password reset process for a user.
+     * @param email User's email address
+     * @throws NotFoundException if user is not found (but returns success for security)
+     */
+    @Transactional
+    public void forgotPassword(String email) {
+        System.out.println("[DEBUG_LOG] Password reset requested for email: " + 
+                          inputSanitizationService.encodeForHTML(email));
+        
+        // Find user by email - for security, don't reveal if email exists
+        User user = userRepository.findByEmail(email).orElse(null);
+        
+        if (user == null) {
+            System.out.println("[DEBUG_LOG] Password reset requested for non-existent email: " + 
+                              inputSanitizationService.encodeForHTML(email));
+            // For security reasons, don't reveal that email doesn't exist
+            // Just return success but don't send email
+            return;
+        }
+        
+        // Check if user is enabled and email is verified
+        if (!user.isEnabled()) {
+            System.out.println("[DEBUG_LOG] Password reset requested for disabled user: " + 
+                              inputSanitizationService.encodeForHTML(email));
+            return; // Don't send reset email for disabled accounts
+        }
+        
+        if (!user.isEmailVerified()) {
+            System.out.println("[DEBUG_LOG] Password reset requested for unverified email: " + 
+                              inputSanitizationService.encodeForHTML(email));
+            return; // Don't send reset email for unverified accounts
+        }
+        
+        // Generate password reset token (15 minutes expiry for security)
+        String resetToken = tokenProvider.generateSecureToken();
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(15);
+        
+        // Save reset token to user
+        user.setPasswordResetToken(resetToken);
+        user.setPasswordResetExpiry(expiryTime);
+        userRepository.save(user);
+        
+        System.out.println("[DEBUG_LOG] Password reset token generated for user: " + 
+                          inputSanitizationService.encodeForHTML(email));
+        
+        // Create reset URL (assuming frontend will handle this endpoint)
+        String resetUrl = "http://localhost:8081/api/auth/reset-password?token=" + resetToken + "&email=" + email;
+        
+        // Publish password reset email event to Kafka
+        try {
+            emailEventProducer.publishPasswordResetEvent(user, resetUrl);
+            System.out.println("[DEBUG_LOG] Password reset email event published for user: " + 
+                              inputSanitizationService.encodeForHTML(email));
+        } catch (Exception e) {
+            System.out.println("[DEBUG_LOG] Failed to publish password reset email event for user: " + 
+                              inputSanitizationService.encodeForHTML(email) + ". Error: " + e.getMessage());
+            // Clear the reset token if email sending fails
+            user.setPasswordResetToken(null);
+            user.setPasswordResetExpiry(null);
+            userRepository.save(user);
+        }
+    }
+
+    /**
+     * Resets user password using reset token.
+     * @param token Password reset token
+     * @param newPassword New password to set
+     * @throws ValidationException if reset fails
+     */
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        System.out.println("[DEBUG_LOG] Password reset attempted with token");
+        
+        // Validate new password
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new ValidationException("New password is required and cannot be empty");
+        }
+        
+        List<String> passwordErrors = passwordValidator.validate(newPassword);
+        if (!passwordErrors.isEmpty()) {
+            throw new ValidationException("Password validation failed: " + String.join(", ", passwordErrors));
+        }
+        
+        // Find user by reset token
+        User user = userRepository.findByPasswordResetToken(token)
+            .orElseThrow(() -> new ValidationException("Invalid or expired reset token"));
+        
+        // Check if token is expired
+        if (user.getPasswordResetExpiry() == null || 
+            user.getPasswordResetExpiry().isBefore(LocalDateTime.now())) {
+            System.out.println("[DEBUG_LOG] Expired reset token used for user: " + 
+                              inputSanitizationService.encodeForHTML(user.getEmail()));
+            throw new ValidationException("Reset token has expired");
+        }
+        
+        // Check if user is enabled
+        if (!user.isEnabled()) {
+            System.out.println("[DEBUG_LOG] Password reset attempted for disabled user: " + 
+                              inputSanitizationService.encodeForHTML(user.getEmail()));
+            throw new ValidationException("Account is disabled");
+        }
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setLastPasswordChange(LocalDateTime.now());
+        
+        // Clear reset token
+        user.setPasswordResetToken(null);
+        user.setPasswordResetExpiry(null);
+        
+        // Clear all existing tokens to force re-login
+        user.clearTokens();
+        
+        // Reset failed login attempts
+        user.setFailedLoginAttempts(0);
+        user.setLastFailedLogin(null);
+        user.setAccountLockedUntil(null);
+        
+        userRepository.save(user);
+        
+        System.out.println("[DEBUG_LOG] Password successfully reset for user: " + 
+                          inputSanitizationService.encodeForHTML(user.getEmail()));
+    }
+
     private void validateCompanyAccess(String companyId, String invitationToken) {
         Company company = companyRepository.findById(companyId)
             .orElseThrow(() -> new NotFoundException("Company not found"));

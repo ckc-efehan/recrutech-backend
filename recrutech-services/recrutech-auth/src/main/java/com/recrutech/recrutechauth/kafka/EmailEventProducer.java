@@ -33,6 +33,9 @@ public class EmailEventProducer {
     @Value("${recrutech.kafka.topics.welcome-email:welcome-email}")
     private String welcomeEmailTopic;
 
+    @Value("${recrutech.kafka.topics.password-reset:password-reset}")
+    private String passwordResetTopic;
+
     /**
      * Publishes an email verification event to Kafka.
      * @param user The user who needs email verification
@@ -148,6 +151,57 @@ public class EmailEventProducer {
 
         } catch (JsonProcessingException e) {
             log.error("[DEBUG_LOG] Failed to serialize welcome email event for user: {}. Error: {}", 
+                     user.getEmail(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Publishes a password reset email event to Kafka.
+     * @param user The user who requested password reset
+     * @param resetUrl The password reset URL with token
+     */
+    public void publishPasswordResetEvent(User user, String resetUrl) {
+        log.info("[DEBUG_LOG] Publishing password reset email event for user: {}", user.getEmail());
+        
+        try {
+            PasswordResetEventDto event = PasswordResetEventDto.builder()
+                    .userId(user.getId())
+                    .email(user.getEmail())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .resetUrl(resetUrl)
+                    .resetToken(user.getPasswordResetToken())
+                    .requestDate(LocalDateTime.now())
+                    .expiryDate(user.getPasswordResetExpiry())
+                    .build();
+
+            // Convert to JSON
+            String eventJson = objectMapper.writeValueAsString(event);
+            
+            // Send to Kafka
+            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+                passwordResetTopic, 
+                user.getEmail(), // Use email as key for partitioning
+                eventJson
+            );
+            
+            // Handle result asynchronously (handle null future gracefully)
+            if (future != null) {
+                future.whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.info("[DEBUG_LOG] Password reset email event sent successfully for user: {} to partition: {}", 
+                                user.getEmail(), result.getRecordMetadata().partition());
+                    } else {
+                        log.error("[DEBUG_LOG] Failed to send password reset email event for user: {}. Error: {}", 
+                                 user.getEmail(), ex.getMessage(), ex);
+                    }
+                });
+            } else {
+                log.warn("[DEBUG_LOG] Kafka send returned null future for user: {}", user.getEmail());
+            }
+
+        } catch (JsonProcessingException e) {
+            log.error("[DEBUG_LOG] Failed to serialize password reset email event for user: {}. Error: {}", 
                      user.getEmail(), e.getMessage(), e);
         }
     }
@@ -278,6 +332,74 @@ public class EmailEventProducer {
             }
 
             public WelcomeEmailEventDto build() {
+                return event;
+            }
+        }
+    }
+
+    /**
+     * DTO for password reset email events.
+     * This mirrors the DTO in the notification service but is defined here 
+     * to avoid cross-module dependencies.
+     */
+    public static class PasswordResetEventDto {
+        public String userId;
+        public String email;
+        public String firstName;
+        public String lastName;
+        public String resetUrl;
+        public String resetToken;
+        public LocalDateTime requestDate;
+        public LocalDateTime expiryDate;
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+            private final PasswordResetEventDto event = new PasswordResetEventDto();
+
+            public Builder userId(String userId) {
+                event.userId = userId;
+                return this;
+            }
+
+            public Builder email(String email) {
+                event.email = email;
+                return this;
+            }
+
+            public Builder firstName(String firstName) {
+                event.firstName = firstName;
+                return this;
+            }
+
+            public Builder lastName(String lastName) {
+                event.lastName = lastName;
+                return this;
+            }
+
+            public Builder resetUrl(String resetUrl) {
+                event.resetUrl = resetUrl;
+                return this;
+            }
+
+            public Builder resetToken(String resetToken) {
+                event.resetToken = resetToken;
+                return this;
+            }
+
+            public Builder requestDate(LocalDateTime requestDate) {
+                event.requestDate = requestDate;
+                return this;
+            }
+
+            public Builder expiryDate(LocalDateTime expiryDate) {
+                event.expiryDate = expiryDate;
+                return this;
+            }
+
+            public PasswordResetEventDto build() {
                 return event;
             }
         }

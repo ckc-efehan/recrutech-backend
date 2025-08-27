@@ -5,6 +5,7 @@ import com.recrutech.recrutechauth.service.HttpRequestService;
 import com.recrutech.recrutechauth.dto.auth.*;
 import com.recrutech.recrutechauth.dto.registration.*;
 import com.recrutech.recrutechauth.dto.common.*;
+import org.springframework.ui.Model;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -140,6 +141,73 @@ public class AuthController {
         // Use factory method to create healthy response
         HealthResponse response = HealthResponse.createHealthyResponse();
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Forgot password endpoint - initiates password reset process.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ResetPasswordResponse> forgotPassword(
+            @Validated(ValidationGroups.BasicValidation.class) @RequestBody ForgotPasswordRequest request) {
+        
+        // Validate business rules before processing
+        request.validateBusinessRules();
+        
+        try {
+            authService.forgotPassword(request.email());
+            // Always return success for security (don't reveal if email exists)
+            ResetPasswordResponse response = ResetPasswordResponse.createForgotPasswordSuccessResponse();
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            // Log error but still return success for security
+            System.out.println("[DEBUG_LOG] Forgot password error: " + e.getMessage());
+            ResetPasswordResponse response = ResetPasswordResponse.createForgotPasswordSuccessResponse();
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    /**
+     * Password reset form endpoint - displays the password reset form.
+     */
+    @GetMapping("/reset-password")
+    public String resetPasswordForm(
+            @RequestParam("token") String token,
+            @RequestParam("email") String email,
+            Model model) {
+        
+        try {
+            // Add token to model for form submission
+            model.addAttribute("token", token);
+            model.addAttribute("email", email);
+            
+            // Return the password reset form template
+            return "reset-password-form";
+        } catch (Exception e) {
+            // If there's an error, redirect to an error page or show error message
+            model.addAttribute("error", "Der Zurücksetzungslink ist ungültig oder abgelaufen.");
+            return "reset-password-form";
+        }
+    }
+
+    /**
+     * Password reset confirmation endpoint - processes the password reset form submission.
+     */
+    @PostMapping("/reset-password-confirm")
+    public ResponseEntity<ResetPasswordResponse> resetPasswordConfirm(
+            @Validated(ValidationGroups.BasicValidation.class) @RequestBody ResetPasswordRequest request) {
+        
+        // Validate business rules before processing
+        request.validateBusinessRules();
+        
+        try {
+            authService.resetPassword(request.token(), request.newPassword());
+            ResetPasswordResponse response = ResetPasswordResponse.createPasswordResetSuccessResponse();
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.out.println("[DEBUG_LOG] Password reset error: " + e.getMessage());
+            ResetPasswordResponse response = ResetPasswordResponse.createInvalidTokenResponse();
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 
 }

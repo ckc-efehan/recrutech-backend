@@ -1,96 +1,105 @@
 # RecruTech Backend
 
 [![Java CI with Maven](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/maven.yml/badge.svg)](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/maven.yml)
-[![Qodana](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/qodana_code_quality.yml/badge.svg)](https://github.com/ckc-efehan/recrutech-backend/actions/workflows/qodana_code_quality.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Java](https://img.shields.io/badge/Java-21-orange.svg)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.5-green.svg)
 
-A modern, microservice-based backend system for recruitment technology, built with Spring Boot and Java 21.
+A modern, modular backend system for recruiting technology, built with Spring Boot and Java 21.
 
 ## Project Overview
 
-RecruTech Backend is a comprehensive platform for recruitment and applicant management. The system provides secure authentication, user management, and GDPR-compliant data processing for different user types (companies, HR employees, applicants).
+RecruTech Backend is a platform for recruitment and applicant management. It provides secure authentication, user management, and GDPR-compliant data processing for different user roles (companies, HR staff, applicants).
 
 ## Architecture
 
-The project follows a modular microservice architecture:
+The project follows a microservice architecture with separate modules:
 
 ```
 recrutech-backend/
 ├── recrutech-services/
-│   ├── recrutech-auth/          # Authentication service
-│   └── recrutech-common/        # Shared utilities and DTOs
-├── docker-compose.yml           # Container orchestration
-└── pom.xml                     # Root Maven configuration
+│   ├── recrutech-auth/          # Authentication & user management, JWT, registration, login
+│   ├── recrutech-common/        # Shared library (DTOs, utilities)
+│   └── recrutech-notification/  # Notifications (email templates, delivery)
+├── docker-compose.yml           # Orchestration (includes services/docker-compose.yml)
+└── pom.xml                      # Root Maven configuration
 ```
 
 ## Technology Stack
 
-### Backend Framework
-- **Spring Boot 3.5.5** - Main framework
-- **Java 21** - Programming language
-- **Maven** - Build management
+### Backend
+- Spring Boot 3.5.5
+- Java 21
+- Maven
 
 ### Security & Authentication
-- **Spring Security** - Security framework
-- **JWT (JSON Web Tokens)** - Token-based authentication
-- **JJWT 0.12.3** - JWT implementation
+- Spring Security
+- JWT (JSON Web Tokens), implementation: JJWT 0.12.3
 
-### Database & Persistence
-- **MySQL 8.0** - Primary database
-- **Spring Data JPA** - ORM framework
-- **Liquibase** - Database migrations
-- **Redis** - Caching and session management
+### Data & Persistence
+- MySQL 8.0
+- Spring Data JPA
+- Liquibase (migrations)
+- Redis (caching/sessions)
 
-### Development Tools
-- **Lombok** - Code generation
-- **Spring Boot DevTools** - Development support
-- **H2 Database** - In-memory database for tests
+### Development & Testing
+- Lombok, Spring Boot DevTools
+- H2 in-memory database (tests)
+- Spring Boot Test, Spring Security Test
 
-### Testing
-- **Spring Boot Test** - Test framework
-- **Spring Security Test** - Security tests
-
-## Installation & Setup
-
-### Prerequisites
+## Prerequisites
 - Java 21 or higher
 - Maven 3.6+
-- Docker & Docker Compose
-- MySQL 8.0 (optional, provided via Docker)
+- Docker and Docker Compose
 
-### 1. Clone Repository
-```bash
+## Quick Start
+
+### 1) Clone repository
+```powershell
 git clone <repository-url>
-cd recrutech-backend
+Set-Location recrutech-backend
 ```
 
-### 2. Start Database
-```bash
-docker-compose up -d mysql
-```
+### 2) Start infrastructure (Docker)
+By default, MySQL, Redis, Zookeeper, and Kafka are provided.
 
-### 3. Compile Application
-```bash
+```powershell
+# Full system (from project root)
+docker compose up -d
+
+# Or only the database
+docker compose up -d mysql
+```
+Note: The root `docker-compose.yml` includes `recrutech-services/docker-compose.yml`.
+
+### 3) Build
+```powershell
 mvn clean compile
 ```
 
-### 4. Start Authentication Service
-```bash
-cd recrutech-services/recrutech-auth
+### 4) Start authentication service
+```powershell
+Set-Location .\recrutech-services\recrutech-auth
 mvn spring-boot:run
 ```
-
 The application will be available at `http://localhost:8080`.
 
-## API Documentation
+## Configuration
 
-### Authentication Endpoints
+### Important environment variables (Docker)
+- `MYSQL_ROOT_PASSWORD` – Root password
+- `MYSQL_DATABASE` – Database name (default: `recrutech`)
+- `MYSQL_USER` – Username
+- `MYSQL_PASSWORD` – Password
 
-**Base URL:** `/api/auth`
+### Application configuration
+- `recrutech-services/recrutech-auth/src/main/resources/application.yml`
 
-#### Login
+## API Overview (Auth)
+
+Base path: `/api/auth`
+
+### Login
 ```http
 POST /api/auth/login
 Content-Type: application/json
@@ -101,9 +110,9 @@ Content-Type: application/json
 }
 ```
 
-#### Registration
+### Registration
 
-**Register Company:**
+Register company:
 ```http
 POST /api/auth/register/company
 Content-Type: application/json
@@ -115,7 +124,7 @@ Content-Type: application/json
 }
 ```
 
-**Register HR User:**
+Register HR user:
 ```http
 POST /api/auth/register/hr
 Content-Type: application/json
@@ -128,7 +137,7 @@ Content-Type: application/json
 }
 ```
 
-**Register Applicant:**
+Register applicant:
 ```http
 POST /api/auth/register/applicant
 Content-Type: application/json
@@ -141,7 +150,7 @@ Content-Type: application/json
 }
 ```
 
-#### Token Management
+### Refresh token
 ```http
 POST /api/auth/refresh
 Content-Type: application/json
@@ -151,7 +160,7 @@ Content-Type: application/json
 }
 ```
 
-#### Logout
+### Logout
 ```http
 POST /api/auth/logout
 Authorization: Bearer <access-token>
@@ -163,82 +172,65 @@ Content-Type: application/json
 }
 ```
 
-#### Health Check
+### Health Check
 ```http
 GET /api/auth/health
 ```
 
 ## Development
 
-### Local Development
-1. Start the MySQL database via Docker Compose
-2. Configure application properties in `application.yml`
-3. Run the application in development mode:
-   ```bash
+### Local development
+1. Start infrastructure via Docker Compose
+2. Configure properties in `application.yml`
+3. Run with the dev profile:
+   ```powershell
    mvn spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
-### Running Tests
-```bash
+### Run tests
+```powershell
 # All tests
 mvn test
 
-# Authentication service tests only
-cd recrutech-services/recrutech-auth
+# Auth service tests only
+Set-Location .\recrutech-services\recrutech-auth
 mvn test
 ```
 
-### Code Style
-The project uses Lombok to reduce boilerplate code. Ensure your IDE has the Lombok plugin installed.
+### Code style
+The project uses Lombok. Please enable the Lombok plugin in your IDE.
 
-## Docker Deployment
+## Docker deployment
 
-### Start Complete System
-```bash
-docker-compose up -d
+### Start complete system
+```powershell
+docker compose up -d
 ```
 
-### Start Database Only
-```bash
-docker-compose up -d mysql
+### Start database only
+```powershell
+docker compose up -d mysql
 ```
 
-## Configuration
-
-### Environment Variables
-- `MYSQL_ROOT_PASSWORD` - MySQL root password
-- `MYSQL_DATABASE` - Database name (default: recrutech)
-- `MYSQL_USER` - Database user
-- `MYSQL_PASSWORD` - Database password
-
-### Application Configuration
-Main configuration is located in:
-- `recrutech-services/recrutech-auth/src/main/resources/application.yml`
-
-## Security Features
-
-- **JWT-based Authentication** with access and refresh tokens
-- **Password Hashing** with secure algorithms
-- **IP Tracking** and user agent logging for security monitoring
-- **CORS Configuration** for secure cross-origin requests
-- **Input Validation** with Bean Validation
-- **GDPR Compliance** with dedicated endpoints
+## Security
+- JWT-based authentication (access and refresh tokens)
+- Password hashing with secure algorithms
+- IP and user-agent logging for security monitoring
+- CORS configuration for secure cross-origin requests
+- Input validation (Bean Validation)
+- GDPR support via dedicated endpoints
 
 ## Monitoring & Logging
-
-The system provides:
-- Health check endpoints for system monitoring
+- Health-check endpoints
 - Comprehensive logging for debugging and audit
-- Security monitoring for suspicious activities
+- Security monitoring of suspicious activities
 
 ## Contributing
-
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch (`git checkout -b feature/NewFeature`)
+3. Commit your changes (`git commit -m "Add NewFeature"`)
+4. Push to the branch (`git push origin feature/NewFeature`)
 5. Open a Pull Request
 
 ## License
-
 This project is licensed under the [MIT License](LICENSE).

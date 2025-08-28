@@ -110,9 +110,13 @@ public class SecurityConfig {
             
             // Authorization rules
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register/**", "/api/auth/refresh", "/api/auth/health", "/api/auth/verify-email").permitAll()
+                // Public API endpoints
+                .requestMatchers("/api/auth/login", "/api/auth/register/**", "/api/auth/refresh", "/api/auth/health", "/api/auth/verify-email", "/api/auth/forgot-password").permitAll()
+                .requestMatchers("/api/auth/reset-password", "/api/auth/reset-password-confirm").permitAll()
                 .requestMatchers("/api/gdpr/info", "/api/gdpr/health").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // Static resources
+                .requestMatchers("/", "/index.html", "/favicon.ico", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                 .anyRequest().authenticated())
             
             // Enhanced security headers (additional to our custom filter)

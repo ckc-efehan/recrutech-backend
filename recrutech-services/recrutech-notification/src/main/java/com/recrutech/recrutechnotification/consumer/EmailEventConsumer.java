@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.recrutech.recrutechnotification.dto.EmailVerificationEvent;
 import com.recrutech.recrutechnotification.dto.WelcomeEmailEvent;
+import com.recrutech.recrutechnotification.dto.PasswordResetEvent;
 import com.recrutech.recrutechnotification.service.EmailService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
@@ -165,4 +166,57 @@ public class EmailEventConsumer {
     //     log.error("[DEBUG_LOG] Received dead letter event from topic: {}. Message: {}", topic, message);
     //     // Handle dead letter events - could store in database for manual review
     // }
+
+    /**
+     * Consumes password reset email events from Kafka topic.
+     */
+    @KafkaListener(
+        topics = "${recrutech.kafka.topics.password-reset:password-reset}",
+        groupId = "${spring.kafka.consumer.group-id:recrutech-notification}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void handlePasswordResetEvent(
+            @Payload String message,
+            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
+            @Header(KafkaHeaders.OFFSET) long offset,
+            Acknowledgment acknowledgment) {
+
+        log.info("[DEBUG_LOG] Received password reset event from partition: {}, offset: {}", partition, offset);
+
+        if (message == null || message.trim().isEmpty()) {
+            log.warn("[DEBUG_LOG] Received null or empty password reset message from partition: {}, offset: {}. Skipping.",
+                    partition, offset);
+            return;
+        }
+
+        try {
+            PasswordResetEvent event = objectMapper.readValue(message, PasswordResetEvent.class);
+            log.info("[DEBUG_LOG] Processing password reset event for user: {}", event.getEmail());
+
+            emailService.validateEmailEvent(event);
+
+            if (event.isTokenExpired()) {
+                log.warn("[DEBUG_LOG] Password reset token expired for user: {}. Skipping email send.", event.getEmail());
+                acknowledgment.acknowledge();
+                return;
+            }
+
+            emailService.sendPasswordResetEmail(event);
+            log.info("[DEBUG_LOG] Password reset email sent successfully for user: {}", event.getEmail());
+
+            acknowledgment.acknowledge();
+        } catch (JsonProcessingException e) {
+            log.error("[DEBUG_LOG] Failed to parse password reset event from partition: {}, offset: {}. Error: {}",
+                     partition, offset, e.getMessage(), e);
+            // Don't acknowledge - will be retried
+        } catch (MessagingException e) {
+            log.error("[DEBUG_LOG] Failed to send password reset email for event from partition: {}, offset: {}. Error: {}",
+                     partition, offset, e.getMessage(), e);
+            // Don't acknowledge - will be retried
+        } catch (Exception e) {
+            log.error("[DEBUG_LOG] Unexpected error processing password reset event from partition: {}, offset: {}. Error: {}",
+                     partition, offset, e.getMessage(), e);
+            // Don't acknowledge - will be retried
+        }
+    }
 }

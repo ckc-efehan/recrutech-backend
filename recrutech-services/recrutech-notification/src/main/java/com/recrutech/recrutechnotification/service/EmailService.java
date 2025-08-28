@@ -2,6 +2,7 @@ package com.recrutech.recrutechnotification.service;
 
 import com.recrutech.recrutechnotification.dto.EmailVerificationEvent;
 import com.recrutech.recrutechnotification.dto.WelcomeEmailEvent;
+import com.recrutech.recrutechnotification.dto.PasswordResetEvent;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -214,11 +215,55 @@ public class EmailService {
         return message;
     }
 
+
     /**
-     * Validates email event data before processing.
-     * @param event Email event to validate
-     * @throws IllegalArgumentException if validation fails
+     * Sends a password reset email to the user.
+     * @param event Password reset event containing user details and reset URL
+     * @throws MessagingException if email sending fails
      */
+    public void sendPasswordResetEmail(PasswordResetEvent event) throws MessagingException {
+        log.info("[DEBUG_LOG] Sending password reset email to: {}", event.getEmail());
+
+        if (event.isTokenExpired()) {
+            log.warn("[DEBUG_LOG] Password reset token is expired for user: {}", event.getEmail());
+            throw new IllegalArgumentException("Password reset token is expired");
+        }
+
+        try {
+            Context context = createPasswordResetContext(event);
+            String htmlContent = templateEngine.process("password-reset", context);
+
+            MimeMessage message = createMimeMessage(
+                event.getEmail(),
+                event.getFullName(),
+                "Passwort zurücksetzen - RecruTech",
+                htmlContent
+            );
+
+            mailSender.send(message);
+            log.info("[DEBUG_LOG] Password reset email sent successfully to: {}", event.getEmail());
+        } catch (Exception e) {
+            log.error("[DEBUG_LOG] Failed to send password reset email to: {}. Error: {}",
+                    event.getEmail(), e.getMessage());
+            throw new MessagingException("Failed to send password reset email", e);
+        }
+    }
+
+    private Context createPasswordResetContext(PasswordResetEvent event) {
+        Context context = new Context(Locale.GERMAN);
+        context.setVariable("firstName", event.getFirstName());
+        context.setVariable("lastName", event.getLastName());
+        context.setVariable("fullName", event.getFullName());
+        context.setVariable("email", event.getEmail());
+        context.setVariable("resetUrl", event.getResetUrl());
+        context.setVariable("requestDate", event.getRequestDate());
+        context.setVariable("expiryDate", event.getExpiryDate());
+
+        log.debug("[DEBUG_LOG] Created password reset email context for user: {} with URL: {}",
+                event.getEmail(), event.getResetUrl());
+        return context;
+    }
+
     public void validateEmailEvent(Object event) {
         switch (event) {
             case null -> throw new IllegalArgumentException("Email event cannot be null");
@@ -233,6 +278,17 @@ public class EmailService {
             case WelcomeEmailEvent welcomeEvent -> {
                 if (welcomeEvent.getEmail() == null || welcomeEvent.getEmail().trim().isEmpty()) {
                     throw new IllegalArgumentException("Email address is required");
+                }
+            }
+            case PasswordResetEvent passwordResetEvent -> {
+                if (passwordResetEvent.getEmail() == null || passwordResetEvent.getEmail().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Email address is required");
+                }
+                if (passwordResetEvent.getResetToken() == null || passwordResetEvent.getResetToken().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Reset token is required");
+                }
+                if (passwordResetEvent.getResetUrl() == null || passwordResetEvent.getResetUrl().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Reset URL is required");
                 }
             }
             default -> {

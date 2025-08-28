@@ -166,28 +166,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * Password reset form endpoint - displays the password reset form.
-     */
-    @GetMapping("/reset-password")
-    public String resetPasswordForm(
-            @RequestParam("token") String token,
-            @RequestParam("email") String email,
-            Model model) {
-        
-        try {
-            // Add token to model for form submission
-            model.addAttribute("token", token);
-            model.addAttribute("email", email);
-            
-            // Return the password reset form template
-            return "reset-password-form";
-        } catch (Exception e) {
-            // If there's an error, redirect to an error page or show error message
-            model.addAttribute("error", "Der Zurücksetzungslink ist ungültig oder abgelaufen.");
-            return "reset-password-form";
-        }
-    }
 
     /**
      * Password reset confirmation endpoint - processes the password reset form submission.

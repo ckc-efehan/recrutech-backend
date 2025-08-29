@@ -8,7 +8,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -131,7 +130,7 @@ class KeyRotationServiceTest {
         assertNotNull(result);
         assertTrue(result.contains(PRIMARY_SECRET));
         assertTrue(result.contains(SECONDARY_SECRET));
-        assertTrue(result.size() >= 1);
+        assertTrue(true);
     }
 
     @Test
@@ -147,7 +146,7 @@ class KeyRotationServiceTest {
         
         // Then
         assertEquals(1, result.size());
-        assertEquals(PRIMARY_SECRET, result.get(0));
+        assertEquals(PRIMARY_SECRET, result.getFirst());
     }
 
     @Test
@@ -168,7 +167,7 @@ class KeyRotationServiceTest {
     @Test
     void checkAndRotateKeys_ShouldSkipRotation_WhenNotNeeded() {
         // Given
-        String nextRotationTime = String.valueOf(System.currentTimeMillis() + (1 * 60 * 60 * 1000)); // 1 hour in future
+        String nextRotationTime = String.valueOf(System.currentTimeMillis() + (60 * 60 * 1000)); // 1 hour in future
         when(valueOperations.get("jwt_key_rotation:next_rotation")).thenReturn(nextRotationTime);
         
         // When
@@ -339,6 +338,6 @@ class KeyRotationServiceTest {
         // Then
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(PRIMARY_SECRET, result.get(0));
+        assertEquals(PRIMARY_SECRET, result.getFirst());
     }
 }

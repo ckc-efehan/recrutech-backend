@@ -34,6 +34,7 @@ public record DeletionResponse(
         return DeletionResponse.builder()
             .userId(userId)
             .success(false)
+            .status("FAILED")
             .message(errorMessage)
             .deletionDate(null)
             .build();

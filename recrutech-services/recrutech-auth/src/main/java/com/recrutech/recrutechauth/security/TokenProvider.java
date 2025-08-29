@@ -251,15 +251,13 @@ public class TokenProvider {
         // Also clear all active sessions for this user
         String sessionPattern = "session:*";
         Set<String> sessionKeys = redisTemplate.keys(sessionPattern);
-        if (sessionKeys != null) {
-            for (String sessionKey : sessionKeys) {
-                String sessionUserId = redisTemplate.opsForValue().get(sessionKey);
-                if (userId.equals(sessionUserId)) {
-                    redisTemplate.delete(sessionKey);
-                }
+        for (String sessionKey : sessionKeys) {
+            String sessionUserId = redisTemplate.opsForValue().get(sessionKey);
+            if (userId.equals(sessionUserId)) {
+                redisTemplate.delete(sessionKey);
             }
         }
-        
+
         // Log security event to Redis for monitoring
         String eventKey = "security_events:" + userId + ":" + System.currentTimeMillis();
         String eventData = String.format("{\"event\":\"USER_TOKEN_INVALIDATION\",\"details\":\"All user tokens invalidated\",\"ip\":\"SYSTEM\",\"timestamp\":\"%s\"}", 
@@ -292,9 +290,7 @@ public class TokenProvider {
                 if (userInvalidationTime != null) {
                     long userInvalidationTimestamp = Long.parseLong(userInvalidationTime);
                     long tokenIssuedAt = claims.getIssuedAt().getTime();
-                    if (tokenIssuedAt < userInvalidationTimestamp) {
-                        return true;
-                    }
+                    return tokenIssuedAt < userInvalidationTimestamp;
                 }
             }
             
@@ -334,7 +330,6 @@ public class TokenProvider {
                     .getPayload();
             } catch (Exception e) {
                 // Continue to next key if this one fails
-                continue;
             }
         }
         
@@ -366,11 +361,7 @@ public class TokenProvider {
                 }
                 
                 // Check global and user-specific invalidation
-                if (isTokenGloballyInvalidated(token)) {
-                    return true;
-                }
-                
-                return false;
+                return isTokenGloballyInvalidated(token);
             }
             return true; // If we can't parse claims, consider it blacklisted
         } catch (Exception e) {

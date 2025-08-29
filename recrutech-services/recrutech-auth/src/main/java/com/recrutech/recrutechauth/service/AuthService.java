@@ -284,7 +284,7 @@ public class AuthService {
                           ", Self-registration: " + isSelfRegistration + ", Email: " + inputSanitizationService.encodeForHTML(sanitizedEmail));
         
         // Validate company access
-        validateCompanyAccess(request.companyId(), request.invitationToken());
+        validateCompanyAccess(request.companyId());
         
         // Create HR user with sanitized data
         User hrUser = createUser(
@@ -416,7 +416,6 @@ public class AuthService {
     }
 
     // Private helper methods
-    
     private User createUser(String email, String password, String firstName, String lastName, UserRole role) {
         // Check if email already exists
         if (userRepository.existsByEmail(email)) {
@@ -651,12 +650,9 @@ public class AuthService {
                           inputSanitizationService.encodeForHTML(user.getEmail()));
     }
 
-    private void validateCompanyAccess(String companyId, String invitationToken) {
-        Company company = companyRepository.findById(companyId)
+    private void validateCompanyAccess(String companyId) {
+        companyRepository.findById(companyId)
             .orElseThrow(() -> new NotFoundException("Company not found"));
-        
-        // For now, just check if company exists
-        // In a real implementation, you would validate the invitation token
     }
 
     private Object loadUserContext(User user) {

@@ -1,9 +1,13 @@
 package com.recrutech.recrutechauth.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.recrutech.recrutechauth.dto.gdpr.ProcessingActivity;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -23,9 +27,14 @@ public class AuditLogService {
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     public AuditLogService(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
+        // Configure ObjectMapper with JavaTimeModule to handle LocalDateTime as ISO-8601
+        this.objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
     /**
@@ -33,24 +42,40 @@ public class AuditLogService {
      */
     public void logDataProcessing(String userId, String activityType, String description, String additionalDetails) {
         if (userId == null) {
-            System.err.println("[AUDIT_LOG_ERROR] Cannot log activity for null userId");
+            // Silently ignore logging when userId is null
+            return;
+        }
+        if (activityType == null) {
+            // Silently ignore invalid activityType
             return;
         }
         
         try {
-            ProcessingActivity activity = ProcessingActivity.builder()
-                .activityId(generateActivityId())
-                .userId(userId)
-                .activityType(activityType)
-                .description(description)
-                .timestamp(LocalDateTime.now())
-                .legalBasis(determineLegalBasis(activityType))
-                .dataCategories(determineDataCategories(activityType))
-                .processingPurpose(determineProcessingPurpose(activityType))
-                .retentionPeriod(determineRetentionPeriod(activityType))
-                .additionalDetails(additionalDetails)
-                .build();
+            ProcessingActivity activity;
+            switch (activityType) {
+                case "DATA_EXPORT" -> {
+                    ProcessingActivity base = ProcessingActivity.createDataExportActivity(userId);
+                    activity = getProcessingActivity(additionalDetails, base);
+                }
+                case "DATA_DELETION" -> activity = ProcessingActivity.createDataDeletionActivity(userId, additionalDetails);
+                default -> activity = ProcessingActivity.builder()
+                    .activityId(generateActivityId())
+                    .userId(userId)
+                    .activityType(activityType)
+                    .description(description)
+                    .timestamp(LocalDateTime.now())
+                    .legalBasis(determineLegalBasis(activityType))
+                    .dataCategories(determineDataCategories(activityType))
+                    .processingPurpose(determineProcessingPurpose(activityType))
+                    .retentionPeriod(determineRetentionPeriod(activityType))
+                    .additionalDetails(additionalDetails)
+                    .build();
+            }
 
+            if (activity == null) {
+                // Defensive guard: should not happen due to switch logic
+                return;
+            }
             storeActivity(activity);
             
         } catch (Exception e) {
@@ -65,25 +90,35 @@ public class AuditLogService {
     public void logDataProcessing(String userId, String activityType, String description, 
                                 String ipAddress, String userAgent, String additionalDetails) {
         if (userId == null) {
-            System.err.println("[AUDIT_LOG_ERROR] Cannot log activity for null userId");
+            // Silently ignore logging when userId is null
+            return;
+        }
+        if (activityType == null || activityType.isBlank()) {
+            // Silently ignore invalid activityType
             return;
         }
         
         try {
-            ProcessingActivity activity = ProcessingActivity.builder()
-                .activityId(generateActivityId())
-                .userId(userId)
-                .activityType(activityType)
-                .description(description)
-                .timestamp(LocalDateTime.now())
-                .ipAddress(ipAddress)
-                .userAgent(userAgent)
-                .legalBasis(determineLegalBasis(activityType))
-                .dataCategories(determineDataCategories(activityType))
-                .processingPurpose(determineProcessingPurpose(activityType))
-                .retentionPeriod(determineRetentionPeriod(activityType))
-                .additionalDetails(additionalDetails)
-                .build();
+            ProcessingActivity activity;
+            if ("LOGIN".equals(activityType)) {
+                ProcessingActivity base = ProcessingActivity.createLoginActivity(userId, ipAddress, userAgent);
+                activity = getProcessingActivity(additionalDetails, base);
+            } else {
+                activity = ProcessingActivity.builder()
+                        .activityId(generateActivityId())
+                        .userId(userId)
+                        .activityType(activityType)
+                        .description(description)
+                        .timestamp(LocalDateTime.now())
+                        .ipAddress(ipAddress)
+                        .userAgent(userAgent)
+                        .legalBasis(determineLegalBasis(activityType))
+                        .dataCategories(determineDataCategories(activityType))
+                        .processingPurpose(determineProcessingPurpose(activityType))
+                        .retentionPeriod(determineRetentionPeriod(activityType))
+                        .additionalDetails(additionalDetails)
+                        .build();
+            }
 
             storeActivity(activity);
             
@@ -91,6 +126,29 @@ public class AuditLogService {
             // Log the error but don't fail the main operation
             System.err.println("[AUDIT_LOG_ERROR] Failed to log activity for user " + userId + ": " + e.getMessage());
         }
+    }
+
+    private ProcessingActivity getProcessingActivity(String additionalDetails, ProcessingActivity base) {
+        ProcessingActivity activity;
+        if (additionalDetails != null && !additionalDetails.isEmpty()) {
+            activity = ProcessingActivity.builder()
+                    .activityId(base.activityId())
+                    .userId(base.userId())
+                    .activityType(base.activityType())
+                    .description(base.description())
+                    .timestamp(base.timestamp())
+                    .ipAddress(base.ipAddress())
+                    .userAgent(base.userAgent())
+                    .legalBasis(base.legalBasis())
+                    .dataCategories(base.dataCategories())
+                    .processingPurpose(base.processingPurpose())
+                    .retentionPeriod(base.retentionPeriod())
+                    .additionalDetails(additionalDetails)
+                    .build();
+        } else {
+            activity = base;
+        }
+        return activity;
     }
 
     /**
@@ -164,8 +222,12 @@ public class AuditLogService {
         String activityKey = AUDIT_LOG_PREFIX + activity.activityId();
         String userActivitiesKey = USER_ACTIVITIES_PREFIX + activity.userId();
         
-        // Serialize activity to JSON-like string
+        // Serialize activity to JSON string using ObjectMapper
         String activityJson = serializeActivity(activity);
+        if (activityJson == null) {
+            System.err.println("[AUDIT_LOG_ERROR] Skipping store due to serialization failure for activity " + activity.activityId());
+            return;
+        }
         
         // Store activity
         redisTemplate.opsForValue().set(activityKey, activityJson);
@@ -174,76 +236,28 @@ public class AuditLogService {
         redisTemplate.opsForSet().add(userActivitiesKey, activity.activityId());
         
         // Set expiration (7 years for GDPR compliance)
-        redisTemplate.expire(activityKey, java.time.Duration.ofDays(7 * 365));
-        redisTemplate.expire(userActivitiesKey, java.time.Duration.ofDays(7 * 365));
+        redisTemplate.expire(activityKey, Duration.ofDays(7 * 365));
+        redisTemplate.expire(userActivitiesKey, Duration.ofDays(7 * 365));
     }
 
     private String serializeActivity(ProcessingActivity activity) {
-        // Simple JSON-like serialization (in production, use proper JSON library)
-        return String.format(
-            "{\"activityId\":\"%s\",\"userId\":\"%s\",\"activityType\":\"%s\",\"description\":\"%s\"," +
-            "\"timestamp\":\"%s\",\"ipAddress\":\"%s\",\"userAgent\":\"%s\",\"legalBasis\":\"%s\"," +
-            "\"dataCategories\":\"%s\",\"processingPurpose\":\"%s\",\"retentionPeriod\":\"%s\"," +
-            "\"additionalDetails\":\"%s\"}",
-            activity.activityId(), activity.userId(), activity.activityType(), activity.description(),
-            activity.timestamp().format(TIMESTAMP_FORMAT),
-            activity.ipAddress() != null ? activity.ipAddress() : "",
-            activity.userAgent() != null ? activity.userAgent() : "",
-            activity.legalBasis(), activity.dataCategories(), activity.processingPurpose(),
-            activity.retentionPeriod(),
-            activity.additionalDetails() != null ? activity.additionalDetails() : ""
-        );
+        try {
+            return objectMapper.writeValueAsString(activity);
+        } catch (Exception e) {
+            System.err.println("[AUDIT_LOG_ERROR] Failed to serialize activity: " + e.getMessage());
+            return null;
+        }
     }
 
     private ProcessingActivity deserializeActivity(String activityJson) {
         try {
-            // Simple JSON-like deserialization (in production, use proper JSON library)
-            // This is a simplified implementation for demonstration
-            String[] parts = activityJson.replace("{", "").replace("}", "").split(",");
-            
-            String activityId = extractValue(parts[0]);
-            String userId = extractValue(parts[1]);
-            String activityType = extractValue(parts[2]);
-            String description = extractValue(parts[3]);
-            String timestampStr = extractValue(parts[4]);
-            String ipAddress = extractValue(parts[5]);
-            String userAgent = extractValue(parts[6]);
-            String legalBasis = extractValue(parts[7]);
-            String dataCategories = extractValue(parts[8]);
-            String processingPurpose = extractValue(parts[9]);
-            String retentionPeriod = extractValue(parts[10]);
-            String additionalDetails = extractValue(parts[11]);
-            
-            LocalDateTime timestamp = LocalDateTime.parse(timestampStr, TIMESTAMP_FORMAT);
-            
-            return ProcessingActivity.builder()
-                .activityId(activityId)
-                .userId(userId)
-                .activityType(activityType)
-                .description(description)
-                .timestamp(timestamp)
-                .ipAddress(ipAddress.isEmpty() ? null : ipAddress)
-                .userAgent(userAgent.isEmpty() ? null : userAgent)
-                .legalBasis(legalBasis)
-                .dataCategories(dataCategories)
-                .processingPurpose(processingPurpose)
-                .retentionPeriod(retentionPeriod)
-                .additionalDetails(additionalDetails.isEmpty() ? null : additionalDetails)
-                .build();
-                
+            return objectMapper.readValue(activityJson, ProcessingActivity.class);
         } catch (Exception e) {
             System.err.println("[AUDIT_LOG_ERROR] Failed to deserialize activity: " + e.getMessage());
             return null;
         }
     }
 
-    private String extractValue(String keyValuePair) {
-        String[] parts = keyValuePair.split(":", 2); // Split only on first colon
-        if (parts.length >= 2) {
-            return parts[1].replace("\"", "").trim();
-        }
-        return "";
-    }
 
     private String generateActivityId() {
         return "ACT-" + System.currentTimeMillis() + "-" + 
@@ -252,7 +266,6 @@ public class AuditLogService {
 
     private String determineLegalBasis(String activityType) {
         return switch (activityType) {
-            case "LOGIN", "LOGOUT", "TOKEN_REFRESH" -> "CONTRACT";
             case "REGISTRATION" -> "CONSENT";
             case "DATA_EXPORT", "DATA_DELETION", "DATA_RECTIFICATION" -> "LEGAL_OBLIGATION";
             case "SECURITY_EVENT", "SUSPICIOUS_ACTIVITY" -> "LEGITIMATE_INTEREST";

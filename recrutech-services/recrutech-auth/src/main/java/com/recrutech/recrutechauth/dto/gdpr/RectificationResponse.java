@@ -34,6 +34,7 @@ public record RectificationResponse(
         return RectificationResponse.builder()
             .userId(userId)
             .success(false)
+            .status("FAILED")
             .message(errorMessage)
             .rectificationDate(null)
             .build();

@@ -71,6 +71,7 @@ public class GdprComplianceService {
 
             return DeletionResponse.builder()
                 .userId(userId)
+                .success(true)
                 .deletionDate(LocalDateTime.now())
                 .status("COMPLETED")
                 .message("All personal data has been deleted or anonymized")
@@ -148,6 +149,7 @@ public class GdprComplianceService {
 
             return RectificationResponse.builder()
                 .userId(userId)
+                .success(true)
                 .rectificationDate(LocalDateTime.now())
                 .status("COMPLETED")
                 .message("Personal data has been updated successfully")

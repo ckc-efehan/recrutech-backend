@@ -66,12 +66,12 @@ public class PasswordValidator {
         }
 
         // Check for sequential characters
-        if (hasSequentialChars(password, 3)) {
+        if (hasSequentialChars(password)) {
             errors.add("Password contains sequential characters (e.g., 'abc', '123')");
         }
 
         // Check for repeated characters
-        if (hasRepeatedChars(password, 3)) {
+        if (hasRepeatedChars(password)) {
             errors.add("Password contains repeated characters (e.g., 'aaa', '111')");
         }
 
@@ -92,17 +92,16 @@ public class PasswordValidator {
      * Checks if a password contains sequential characters.
      *
      * @param password the password to check
-     * @param length the minimum length of the sequence
      * @return true if the password contains sequential characters, false otherwise
      */
-    private boolean hasSequentialChars(String password, int length) {
-        if (password.length() < length) {
+    private boolean hasSequentialChars(String password) {
+        if (password.length() < 3) {
             return false;
         }
 
-        for (int i = 0; i <= password.length() - length; i++) {
+        for (int i = 0; i <= password.length() - 3; i++) {
             boolean isSequential = true;
-            for (int j = 1; j < length; j++) {
+            for (int j = 1; j < 3; j++) {
                 if (password.charAt(i + j) != password.charAt(i + j - 1) + 1) {
                     isSequential = false;
                     break;
@@ -120,18 +119,17 @@ public class PasswordValidator {
      * Checks if a password contains repeated characters.
      *
      * @param password the password to check
-     * @param length the minimum length of the repetition
      * @return true if the password contains repeated characters, false otherwise
      */
-    private boolean hasRepeatedChars(String password, int length) {
-        if (password.length() < length) {
+    private boolean hasRepeatedChars(String password) {
+        if (password.length() < 3) {
             return false;
         }
 
-        for (int i = 0; i <= password.length() - length; i++) {
+        for (int i = 0; i <= password.length() - 3; i++) {
             boolean isRepeated = true;
             char c = password.charAt(i);
-            for (int j = 1; j < length; j++) {
+            for (int j = 1; j < 3; j++) {
                 if (password.charAt(i + j) != c) {
                     isRepeated = false;
                     break;

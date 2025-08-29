@@ -2,8 +2,6 @@ package com.recrutech.recrutechauth.dto.gdpr;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Builder;
-import lombok.extern.jackson.Jacksonized;
 
 import java.time.LocalDateTime;
 
@@ -12,8 +10,6 @@ import java.time.LocalDateTime;
  * Represents a single data processing activity that must be logged
  * according to GDPR Article 30 (Records of processing activities).
  */
-@Builder
-@Jacksonized
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ProcessingActivity(
@@ -42,6 +38,67 @@ public record ProcessingActivity(
     
     String additionalDetails
 ) {
+    
+    // Manually implemented public builder to avoid Lombok builder visibility issues
+    public static ProcessingActivityBuilder builder() {
+        return new ProcessingActivityBuilder();
+    }
+    
+    public static final class ProcessingActivityBuilder {
+        private String activityId;
+        private String userId;
+        private String activityType;
+        private String description;
+        private LocalDateTime timestamp;
+        private String ipAddress;
+        private String userAgent;
+        private String legalBasis;
+        private String dataCategories;
+        private String processingPurpose;
+        private String retentionPeriod;
+        private String additionalDetails;
+        
+        public ProcessingActivityBuilder activityId(String activityId) {
+            this.activityId = activityId; return this;
+        }
+        public ProcessingActivityBuilder userId(String userId) {
+            this.userId = userId; return this;
+        }
+        public ProcessingActivityBuilder activityType(String activityType) {
+            this.activityType = activityType; return this;
+        }
+        public ProcessingActivityBuilder description(String description) {
+            this.description = description; return this;
+        }
+        public ProcessingActivityBuilder timestamp(LocalDateTime timestamp) {
+            this.timestamp = timestamp; return this;
+        }
+        public ProcessingActivityBuilder ipAddress(String ipAddress) {
+            this.ipAddress = ipAddress; return this;
+        }
+        public ProcessingActivityBuilder userAgent(String userAgent) {
+            this.userAgent = userAgent; return this;
+        }
+        public ProcessingActivityBuilder legalBasis(String legalBasis) {
+            this.legalBasis = legalBasis; return this;
+        }
+        public ProcessingActivityBuilder dataCategories(String dataCategories) {
+            this.dataCategories = dataCategories; return this;
+        }
+        public ProcessingActivityBuilder processingPurpose(String processingPurpose) {
+            this.processingPurpose = processingPurpose; return this;
+        }
+        public ProcessingActivityBuilder retentionPeriod(String retentionPeriod) {
+            this.retentionPeriod = retentionPeriod; return this;
+        }
+        public ProcessingActivityBuilder additionalDetails(String additionalDetails) {
+            this.additionalDetails = additionalDetails; return this;
+        }
+        public ProcessingActivity build() {
+            return new ProcessingActivity(activityId, userId, activityType, description, timestamp,
+                    ipAddress, userAgent, legalBasis, dataCategories, processingPurpose, retentionPeriod, additionalDetails);
+        }
+    }
     
     /**
      * Creates a processing activity for login events

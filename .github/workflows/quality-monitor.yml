@@ -3,7 +3,7 @@ name: Quality Monitor
 on:
   pull_request:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   quality-checks:

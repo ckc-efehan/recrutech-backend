@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 /**
  * Global exception handler that maps domain and validation exceptions
  * to consistent HTTP status codes and a unified error response format.
- *
  * Response schema: { code, message, timestamp, requestId }
  */
 @RestControllerAdvice

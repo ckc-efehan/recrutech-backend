@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Recrutech Platform Service - Database Schema
+# Version: 1.0.0
+# Author: Implementation by Junie (JetBrains)
+# Description: Master changelog file for the Recrutech platform service database schema
+# 
+# This file orchestrates the creation of all platform-specific database tables and constraints
+# in the proper dependency order to ensure referential integrity.
+#
+# Initial scope: job_postings table
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- VERSION 1.0 - INITIAL SCHEMA CREATION -->
+
+    <!-- Step: Create job postings infrastructure -->
+    <include file="/db.changelog/v0.1/05-create-job-postings-table.xml"/>
+
+</databaseChangeLog>

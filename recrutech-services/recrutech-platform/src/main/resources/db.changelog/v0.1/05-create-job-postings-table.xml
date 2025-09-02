@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Platform Module - Job Postings Table
+# Version: 1.0.0
+# Author: Junie (JetBrains)
+# Description: Creates the job_postings table with company scoping, auditing, and soft delete
+# Dependencies: users table (for created/updated/deleted by FKs), companies table (for company_id FK)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create job_postings table -->
+    <changeSet id="create-job-postings-table-v1.0" author="junie">
+        <comment>
+            Creates the job_postings table for company-scoped job listings with auditing and soft delete.
+        </comment>
+
+        <createTable tableName="job_postings">
+            <!-- Primary Key and Base Entity Fields -->
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Company Scope and Audit References -->
+            <column name="company_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by_user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by_user_id" type="char(36)"/>
+            <column name="deleted_by_user_id" type="char(36)"/>
+
+            <!-- Content Fields -->
+            <column name="title" type="varchar(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location" type="varchar(200)"/>
+            <column name="employment_type" type="varchar(50)"/>
+            <column name="salary_min" type="decimal(12,2)"/>
+            <column name="salary_max" type="decimal(12,2)"/>
+            <column name="currency" type="varchar(3)"/>
+
+            <!-- Status & Publication -->
+            <column name="status" type="varchar(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="datetime"/>
+            <column name="expires_at" type="datetime"/>
+
+            <!-- Soft Delete -->
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="datetime"/>
+        </createTable>
+
+    </changeSet>
+
+    <!-- Indexes for performance -->
+    <changeSet id="create-job-postings-indexes-v1.0" author="junie">
+        <createIndex tableName="job_postings" indexName="idx_job_postings_company">
+            <column name="company_id"/>
+        </createIndex>
+        <createIndex tableName="job_postings" indexName="idx_job_postings_company_status">
+            <column name="company_id"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="job_postings" indexName="idx_job_postings_published">
+            <column name="status"/>
+            <column name="is_deleted"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Foreign keys for referential integrity -->
+    <changeSet id="create-job-postings-foreign-keys-v1.0" author="junie">
+        <addForeignKeyConstraint
+                baseTableName="job_postings"
+                baseColumnNames="company_id"
+                constraintName="fk_job_postings_company"
+                referencedTableName="companies"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="job_postings"
+                baseColumnNames="created_by_user_id"
+                constraintName="fk_job_postings_created_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="job_postings"
+                baseColumnNames="updated_by_user_id"
+                constraintName="fk_job_postings_updated_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="job_postings"
+                baseColumnNames="deleted_by_user_id"
+                constraintName="fk_job_postings_deleted_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

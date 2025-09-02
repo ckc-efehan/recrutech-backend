@@ -2,7 +2,7 @@
 <!--
 # Platform Module - Job Postings Table
 # Version: 1.0.0
-# Author: Junie (JetBrains)
+# Author: Efehan Cekic
 # Description: Creates the job_postings table with company scoping, auditing, and soft delete
 # Dependencies: users table (for created/updated/deleted by FKs), companies table (for company_id FK)
 -->
@@ -12,7 +12,7 @@
                    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
     <!-- Create job_postings table -->
-    <changeSet id="create-job-postings-table-v1.0" author="junie">
+    <changeSet id="create-job-postings-table-v1.0" author="Efehan Cekic">
         <comment>
             Creates the job_postings table for company-scoped job listings with auditing and soft delete.
         </comment>
@@ -66,7 +66,7 @@
     </changeSet>
 
     <!-- Indexes for performance -->
-    <changeSet id="create-job-postings-indexes-v1.0" author="junie">
+    <changeSet id="create-job-postings-indexes-v1.0" author="Efehan Cekic">
         <createIndex tableName="job_postings" indexName="idx_job_postings_company">
             <column name="company_id"/>
         </createIndex>
@@ -81,7 +81,7 @@
     </changeSet>
 
     <!-- Foreign keys for referential integrity -->
-    <changeSet id="create-job-postings-foreign-keys-v1.0" author="junie">
+    <changeSet id="create-job-postings-foreign-keys-v1.0" author="Efehan Cekic">
         <addForeignKeyConstraint
                 baseTableName="job_postings"
                 baseColumnNames="company_id"

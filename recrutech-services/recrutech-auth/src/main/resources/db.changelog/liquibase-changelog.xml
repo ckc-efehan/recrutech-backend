@@ -2,7 +2,7 @@
 <!--
 # Recrutech Authentication Service - Database Schema
 # Version: 1.0.0
-# Author: Efehan Cekic [efehan.cekic@student.htw-berlin.de]
+# Author: Efehan Cekic
 # Description: Master changelog file for the Recrutech authentication service database schema
 # 
 # This file orchestrates the creation of all database tables and constraints

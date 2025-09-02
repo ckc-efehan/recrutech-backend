@@ -8,7 +8,7 @@ on:
 jobs:
   quality-checks:
     runs-on: ubuntu-latest
-
+  
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,40 +20,15 @@ jobs:
           java-version: 21
           cache: maven
 
-      # Optional cache for OWASP Dependency Check data to improve reliability/speed
-      - name: Cache OWASP Dependency Check Data
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: owasp-dc-data-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            owasp-dc-data-${{ runner.os }}-
 
-      # Build & Tests
-      - name: Build & Test
+      - name: Build, Test, Lint, Security, Coverage
         run: mvn -B -ntp clean verify
 
-      # JaCoCo Coverage
-      - name: Generate JaCoCo Report
-        run: mvn -ntp jacoco:report
-
-      # Checkstyle
-      - name: Run Checkstyle
-        run: mvn -ntp checkstyle:check
-
-      # PMD
-      - name: Run PMD
-        run: mvn -ntp pmd:check
-
-      # SpotBugs + FindSecBugs
-      - name: Run SpotBugs
-        run: mvn -ntp com.github.spotbugs:spotbugs-maven-plugin:check
-
-      # OWASP Dependency Check
-      - name: Run OWASP Dependency Check
-        env:
-          # Use cached data directory to avoid re-downloading NVD on each run
-          MAVEN_OPTS: "-Ddependency-check.data.directory=${{ github.workspace }}/.depcheck"
-        run: |
-          mkdir -p .depcheck
-          mvn -ntp org.owasp:dependency-check-maven:check
+      - name: Upload quality reports (artifacts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports
+          path: |
+            recrutech-services/target/site/jacoco-aggregate/**
+            **/target/site/**

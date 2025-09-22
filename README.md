@@ -20,7 +20,8 @@ recrutech-backend/
 ├── recrutech-services/
 │   ├── recrutech-auth/          # Authentication & user management, JWT, registration, login
 │   ├── recrutech-common/        # Shared library (DTOs, utilities)
-│   └── recrutech-notification/  # Notifications (email templates, delivery)
+│   ├── recrutech-notification/  # Notifications (email templates, delivery)
+│   └── recrutech-platform/      # Company-scoped platform APIs (Job Postings, etc.)
 ├── docker-compose.yml           # Orchestration (includes services/docker-compose.yml)
 └── pom.xml                      # Root Maven configuration
 ```
@@ -84,6 +85,17 @@ mvn spring-boot:run
 ```
 The application will be available at `http://localhost:8080`.
 
+### 5) Start platform service (Job Postings)
+```powershell
+Set-Location ..\recrutech-platform
+mvn spring-boot:run
+```
+By default, the platform service also uses port 8080. If you want to run both services at once, override the port, for example:
+```powershell
+mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
+```
+Base URL: `http://localhost:8080` (or `8081` if overridden).
+
 ## Configuration
 
 ### Important environment variables (Docker)
@@ -94,6 +106,7 @@ The application will be available at `http://localhost:8080`.
 
 ### Application configuration
 - `recrutech-services/recrutech-auth/src/main/resources/application.yml`
+- `recrutech-services/recrutech-platform/src/main/resources/application.properties`
 
 ## API Overview (Auth)
 
@@ -177,6 +190,84 @@ Content-Type: application/json
 GET /api/auth/health
 ```
 
+## API Overview (Platform – Job Postings)
+
+Base path: `/companies/{companyId}/job-postings`
+
+Headers:
+- For write operations: `X-User-Id: <uuid>`
+- `Content-Type: application/json`
+
+Notes:
+- Locally no Authorization header is required; security is configured to permit all for development.
+- Foreign keys: `companyId` and `X-User-Id` must reference existing rows in `companies` and `users` when DB constraints are enforced.
+
+### Create
+```http
+POST /companies/{companyId}/job-postings
+X-User-Id: <uuid>
+Content-Type: application/json
+
+{
+  "title": "Senior Backend Engineer",
+  "description": "Wir suchen eine/n Senior Backend Engineer (Java, Spring).",
+  "location": "Berlin, DE",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 65000,
+  "salaryMax": 85000,
+  "currency": "EUR",
+  "expiresAt": "2030-12-31T23:59:59"
+}
+```
+
+### Get by ID
+```http
+GET /companies/{companyId}/job-postings/{id}
+```
+
+### List (optional filters)
+```http
+GET /companies/{companyId}/job-postings?status=&page=0&size=20&sort=createdAt,desc
+```
+
+### Update
+```http
+PUT /companies/{companyId}/job-postings/{id}
+X-User-Id: <uuid>
+Content-Type: application/json
+{ ...same fields as create... }
+```
+
+### Publish
+```http
+POST /companies/{companyId}/job-postings/{id}/publish
+X-User-Id: <uuid>
+```
+
+### Close
+```http
+POST /companies/{companyId}/job-postings/{id}/close
+X-User-Id: <uuid>
+```
+
+### Delete (soft)
+```http
+DELETE /companies/{companyId}/job-postings/{id}
+X-User-Id: <uuid>
+```
+
+Sample success response (excerpt):
+```json
+{
+  "id": "<uuid>",
+  "companyId": "<uuid>",
+  "title": "Senior Backend Engineer",
+  "status": "DRAFT",
+  "createdAt": "2025-09-22T18:17:00",
+  "isDeleted": false
+}
+```
+
 ## Development
 
 ### Local development
@@ -189,13 +280,21 @@ GET /api/auth/health
 
 ### Run tests
 ```powershell
-# All tests
+# All modules
 mvn test
 
 # Auth service tests only
 Set-Location .\recrutech-services\recrutech-auth
 mvn test
+
+# Platform service tests only (includes Testcontainers MySQL)
+Set-Location ..\recrutech-platform
+mvn test
+# Or from project root:
+mvn -pl recrutech-services/recrutech-platform test
 ```
+
+Note: Ensure Docker is running; repository integration tests in the platform module use Testcontainers (MySQL).
 
 ### Code style
 The project uses Lombok. Please enable the Lombok plugin in your IDE.

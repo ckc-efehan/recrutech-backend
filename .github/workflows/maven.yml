@@ -15,22 +15,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      docker:
-        image: docker:24-dind
-        ports:
-          - 2375:2375
-        options: >-
-          --privileged
-          --storage-driver overlay2
-        env:
-          DOCKER_TLS_CERTDIR: ""
-
-    env:
-      DOCKER_HOST: tcp://localhost:2375
-      DOCKER_TLS_CERTDIR: ""
-      TESTCONTAINERS_RYUK_DISABLED: "true"
-
     steps:
       - uses: actions/checkout@v4
 

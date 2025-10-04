@@ -268,6 +268,277 @@ Sample success response (excerpt):
 }
 ```
 
+## Application Management System
+
+The Application Management System is the core of the recruiting platform, connecting **Job Postings**, **Applicants**, and **Companies** through a complete application workflow.
+
+### Features
+- ✅ Complete application lifecycle management (SUBMITTED → UNDER_REVIEW → INTERVIEW_SCHEDULED → INTERVIEWED → OFFER_EXTENDED → ACCEPTED/REJECTED/WITHDRAWN)
+- ✅ Duplicate application prevention
+- ✅ Status transition validation
+- ✅ Event-driven architecture for notifications
+- ✅ Soft-delete with audit trail
+- ✅ Pagination and filtering
+- ✅ Comprehensive test coverage (59 tests)
+
+### Application Status Workflow
+
+```
+SUBMITTED 
+    ↓
+UNDER_REVIEW
+    ↓
+INTERVIEW_SCHEDULED
+    ↓
+INTERVIEWED
+    ↓
+OFFER_EXTENDED
+    ↓
+ACCEPTED / REJECTED / WITHDRAWN
+```
+
+**Status Transitions:**
+- From any non-final status: Can transition to `REJECTED` or `WITHDRAWN`
+- Final statuses (`ACCEPTED`, `REJECTED`, `WITHDRAWN`) cannot be changed
+- Only valid transitions are allowed (enforced by business logic)
+
+## API Overview (Applications)
+
+Base path: `/applications`
+
+Headers:
+- `X-User-Id: <uuid>` (required for write operations)
+- `Content-Type: application/json`
+
+### Submit Application
+```http
+POST /applications
+X-User-Id: <uuid>
+Content-Type: application/json
+
+{
+  "applicantId": "<uuid>",
+  "jobPostingId": "<uuid>",
+  "coverLetter": "I am very interested in this position...",
+  "resumeUrl": "https://example.com/resume.pdf",
+  "portfolioUrl": "https://example.com/portfolio"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "<uuid>",
+  "applicantId": "<uuid>",
+  "jobPostingId": "<uuid>",
+  "status": "SUBMITTED",
+  "submittedAt": "2025-10-04T19:42:00",
+  "coverLetter": "I am very interested...",
+  "resumeUrl": "https://example.com/resume.pdf",
+  "portfolioUrl": "https://example.com/portfolio",
+  "isDeleted": false,
+  "createdAt": "2025-10-04T19:42:00"
+}
+```
+
+**Business Rules:**
+- Prevents duplicate applications (one applicant can only apply once per job posting)
+- Automatically sets status to `SUBMITTED`
+- Sets `submittedAt` timestamp
+- Publishes `ApplicationSubmittedEvent`
+
+### Get Application by ID
+```http
+GET /applications/{id}
+```
+
+### Get Applications by Applicant
+Get all applications for a specific applicant (with optional status filter).
+
+```http
+GET /applications/applicant/{applicantId}?status=SUBMITTED&page=0&size=20&sort=submittedAt,desc
+```
+
+### Get Applications by Job Posting
+Get all applications for a specific job posting (for HR/recruiters).
+
+```http
+GET /applications/job-posting/{jobPostingId}?status=UNDER_REVIEW&page=0&size=20
+```
+
+### Get Applications by Company
+Get all applications for a company's job postings.
+
+```http
+GET /applications/company/{companyId}?status=INTERVIEWED&page=0&size=20
+```
+
+### Update Application Status
+Update the status of an application (for HR/recruiters).
+
+```http
+PUT /applications/{id}/status
+X-User-Id: <uuid>
+Content-Type: application/json
+
+{
+  "status": "UNDER_REVIEW",
+  "hrNotes": "Good candidate, proceeding to interview",
+  "rejectionReason": null
+}
+```
+
+**Valid Status Transitions:**
+- `SUBMITTED` → `UNDER_REVIEW`, `REJECTED`, `WITHDRAWN`
+- `UNDER_REVIEW` → `INTERVIEW_SCHEDULED`, `REJECTED`, `WITHDRAWN`
+- `INTERVIEW_SCHEDULED` → `INTERVIEWED`, `REJECTED`, `WITHDRAWN`
+- `INTERVIEWED` → `OFFER_EXTENDED`, `REJECTED`, `WITHDRAWN`
+- `OFFER_EXTENDED` → `ACCEPTED`, `REJECTED`, `WITHDRAWN`
+
+**Publishes:** `ApplicationStatusChangedEvent`
+
+### Withdraw Application
+Allows an applicant to withdraw their application.
+
+```http
+POST /applications/{id}/withdraw?applicantId={applicantId}
+X-User-Id: <uuid>
+```
+
+**Business Rules:**
+- Only the applicant who submitted the application can withdraw it
+- Cannot withdraw finalized applications (ACCEPTED, REJECTED, WITHDRAWN)
+- Sets status to `WITHDRAWN` and `finalizedAt` timestamp
+
+### Delete Application (Soft Delete)
+```http
+DELETE /applications/{id}
+X-User-Id: <uuid>
+```
+
+## Event Infrastructure
+
+The system uses an event-driven architecture for loose coupling and asynchronous processing.
+
+### Base Event
+All events extend `BaseEvent` which provides:
+- `eventId` (UUID)
+- `occurredAt` (timestamp)
+- `eventType` (string identifier)
+
+### Application Events
+
+#### ApplicationSubmittedEvent
+Published when a new application is submitted.
+
+**Fields:**
+- `applicationId`
+- `applicantId`
+- `jobPostingId`
+- `companyId`
+
+**Use Cases:**
+- Send confirmation email to applicant
+- Notify HR team of new application
+- Update analytics/metrics
+
+#### ApplicationStatusChangedEvent
+Published when an application's status changes.
+
+**Fields:**
+- `applicationId`
+- `applicantId`
+- `jobPostingId`
+- `companyId`
+- `previousStatus`
+- `newStatus`
+- `updatedByUserId`
+
+**Use Cases:**
+- Notify applicant of status change
+- Trigger workflow automation (e.g., send interview invitation)
+- Maintain audit trail
+
+## Database Schema
+
+### Core Tables
+
+#### users
+- `id` (CHAR(36), PK)
+- `email` (VARCHAR, unique)
+- `password_hash` (VARCHAR)
+- `role` (ENUM: COMPANY_ADMIN, HR, APPLICANT)
+- `created_at` (DATETIME)
+- Audit fields: `is_deleted`, `deleted_at`
+
+#### companies
+- `id` (CHAR(36), PK)
+- `name` (VARCHAR)
+- `location` (VARCHAR)
+- `business_email` (VARCHAR, unique)
+- `admin_user_id` (CHAR(36), FK → users.id)
+- `verified` (BOOLEAN)
+- `created_at` (DATETIME)
+
+#### applicants
+- `id` (CHAR(36), PK)
+- `user_id` (CHAR(36), FK → users.id)
+- `phone_number` (VARCHAR)
+- `date_of_birth` (DATE)
+- `linkedin_profile` (VARCHAR)
+- `resume_url` (VARCHAR)
+- `current_location` (VARCHAR)
+- `profile_complete` (BOOLEAN)
+- `created_at` (DATETIME)
+
+#### job_postings
+- `id` (CHAR(36), PK)
+- `company_id` (CHAR(36), FK → companies.id)
+- `title` (VARCHAR(200))
+- `description` (TEXT)
+- `location` (VARCHAR(200))
+- `employment_type` (VARCHAR(50))
+- `salary_min`, `salary_max` (DECIMAL(12,2))
+- `currency` (VARCHAR(3))
+- `status` (ENUM: DRAFT, PUBLISHED, ARCHIVED)
+- `published_at`, `expires_at` (DATETIME)
+- Audit fields: `created_by_user_id`, `updated_by_user_id`, `deleted_by_user_id`
+- Soft delete: `is_deleted`, `deleted_at`
+- `created_at` (DATETIME)
+
+**Indexes:**
+- `idx_job_postings_company` (company_id)
+- `idx_job_postings_company_status` (company_id, status)
+- `idx_job_postings_published` (status, is_deleted)
+
+#### applications
+- `id` (CHAR(36), PK)
+- `applicant_id` (CHAR(36), FK → applicants.id)
+- `job_posting_id` (CHAR(36), FK → job_postings.id)
+- `cover_letter` (TEXT)
+- `resume_url` (VARCHAR(500))
+- `portfolio_url` (VARCHAR(500))
+- `status` (ENUM: SUBMITTED, UNDER_REVIEW, INTERVIEW_SCHEDULED, INTERVIEWED, OFFER_EXTENDED, ACCEPTED, REJECTED, WITHDRAWN)
+- Lifecycle timestamps: `submitted_at`, `reviewed_at`, `interview_scheduled_at`, `offer_extended_at`, `finalized_at`
+- `hr_notes`, `rejection_reason` (TEXT)
+- Audit fields: `created_by_user_id`, `updated_by_user_id`, `deleted_by_user_id`
+- Soft delete: `is_deleted`, `deleted_at`
+- `created_at` (DATETIME)
+
+**Indexes:**
+- `idx_applications_applicant` (applicant_id)
+- `idx_applications_job_posting` (job_posting_id)
+- `idx_applications_applicant_status` (applicant_id, status)
+- `idx_applications_job_posting_status` (job_posting_id, status)
+- `idx_applications_applicant_job_posting` (applicant_id, job_posting_id, is_deleted) - for duplicate prevention
+- `idx_applications_is_deleted` (is_deleted)
+
+**Foreign Key Constraints:**
+- All foreign keys have `ON DELETE` and `ON UPDATE` rules
+- `applicant_id`, `job_posting_id`: `CASCADE`
+- `created_by_user_id`: `RESTRICT`
+- `updated_by_user_id`, `deleted_by_user_id`: `SET NULL`
+
 ## Development
 
 ### Local development
@@ -292,9 +563,117 @@ Set-Location ..\recrutech-platform
 mvn test
 # Or from project root:
 mvn -pl recrutech-services/recrutech-platform test
+
+# Common module tests (Event infrastructure)
+Set-Location ..\recrutech-common
+mvn test
 ```
 
 Note: Ensure Docker is running; repository integration tests in the platform module use Testcontainers (MySQL).
+
+### Test Coverage
+
+The project has comprehensive test coverage across all modules:
+
+#### Platform Module Tests (59 tests total)
+
+**ApplicationServiceTest (30 tests)** - Service layer business logic
+- Submit application tests (5 tests)
+  - Success scenario with all fields
+  - Duplicate application prevention
+  - Invalid UUID validation (applicantId, jobPostingId, userId)
+- Get application tests (8 tests)
+  - Get by ID (success and not found)
+  - Get by applicant (with/without status filter)
+  - Get by job posting (with/without status filter)
+  - Get by company (with/without status filter)
+- Update status tests (13 tests)
+  - Valid transitions through entire workflow
+  - Invalid transition validation
+  - Finalized application protection (ACCEPTED, REJECTED, WITHDRAWN)
+  - Idempotent status updates
+- Withdraw tests (3 tests)
+  - Success scenario
+  - Ownership validation
+  - Cannot withdraw finalized applications
+- Soft delete test (1 test)
+
+**ApplicationControllerTest (21 tests)** - REST API endpoints
+- Submit endpoint (4 tests)
+  - Success (201 Created)
+  - Missing X-User-Id header (400)
+  - Missing applicantId (400)
+  - Missing jobPostingId (400)
+- Get by ID endpoint (1 test)
+- Get by applicant endpoint (3 tests)
+  - Without status filter
+  - With status filter
+  - Pageable parameters validation
+- Get by job posting endpoint (2 tests)
+  - Without status filter
+  - With status filter
+- Get by company endpoint (3 tests)
+  - Without status filter
+  - With status filter
+  - Pageable parameters validation
+- Update status endpoint (3 tests)
+  - Success (200 OK)
+  - Missing X-User-Id header (400)
+  - Missing status field (400)
+- Withdraw endpoint (3 tests)
+  - Success (200 OK)
+  - Missing X-User-Id header (400)
+  - Missing applicantId parameter (400)
+- Delete endpoint (2 tests)
+  - Success (204 No Content)
+  - Missing X-User-Id header (400)
+
+**ApplicationMapperTest (2 tests)** - Entity/DTO mapping
+- Maps all fields correctly
+- Handles null optional fields
+
+**JobPostingServiceTest (12 tests)** - Job postings business logic
+- Create, read, update operations
+- Publish and close workflows
+- Soft delete
+- Business rule validation (salary, currency, dates)
+
+**JobPostingControllerTest (7 tests)** - Job postings REST API
+- All CRUD operations
+- Pagination and filtering
+
+#### Common Module Tests (6 tests)
+
+**ApplicationSubmittedEventTest (3 tests)** - Event creation and properties
+- Constructor initializes all fields
+- toString contains all information
+- Event IDs are unique
+
+**ApplicationStatusChangedEventTest (3 tests)** - Event creation and properties
+- Constructor initializes all fields
+- ToString contains all information
+- Event IDs are unique
+
+#### Test Technologies
+- **JUnit 5** - Test framework
+- **Mockito** - Mocking framework
+- **AssertJ** - Fluent assertions
+- **Spring Boot Test** - Integration testing
+- **MockMvc** - REST API testing
+- **Testcontainers** - Database integration tests (MySQL)
+- **H2** - In-memory database for unit tests
+
+#### Running Specific Test Classes
+```powershell
+# Run ApplicationServiceTest
+mvn -Dtest=ApplicationServiceTest test
+
+# Run ApplicationControllerTest
+mvn -Dtest=ApplicationControllerTest test
+
+# Run all Application tests
+mvn -Dtest=Application*Test test
+```
 
 ### Code style
 The project uses Lombok. Please enable the Lombok plugin in your IDE.

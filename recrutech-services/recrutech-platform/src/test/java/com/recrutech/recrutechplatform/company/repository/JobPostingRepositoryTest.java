@@ -5,65 +5,33 @@ import com.recrutech.recrutechplatform.company.model.JobPostingStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Testcontainers
 @DataJpaTest
+@ActiveProfiles("test")
 class JobPostingRepositoryTest {
-
-    @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("recrutech_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @DynamicPropertySource
-    static void props(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", mysql::getJdbcUrl);
-        r.add("spring.datasource.username", mysql::getUsername);
-        r.add("spring.datasource.password", mysql::getPassword);
-        r.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
-        r.add("spring.jpa.show-sql", () -> "false");
-        r.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.MySQLDialect");
-        r.add("spring.jpa.properties.hibernate.type.preferred_boolean_jdbc_type", () -> "TINYINT");
-        // Use test-specific changelog that creates stub users/companies before job_postings
-        r.add("spring.liquibase.change-log", () -> "classpath:db.changelog/test/test-changelog.xml");
-    }
 
     @Autowired
     JobPostingRepository repo;
 
     @Autowired
-    JdbcTemplate jdbc;
+    TestEntityManager entityManager;
 
     private final String companyId = "11111111-1111-1111-1111-111111111111";
     private final String userId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
     @BeforeEach
     void setup() {
-        // Clean tables in order (job_postings has FKs to users/companies)
-        jdbc.update("SET FOREIGN_KEY_CHECKS = 0");
-        jdbc.update("TRUNCATE TABLE job_postings");
-        jdbc.update("TRUNCATE TABLE companies");
-        jdbc.update("TRUNCATE TABLE users");
-        jdbc.update("SET FOREIGN_KEY_CHECKS = 1");
-
-        // Seed minimal users and companies to satisfy FK constraints
-        jdbc.update("INSERT INTO users (id, created_at) VALUES (?, ?)", userId, LocalDateTime.now());
-        jdbc.update("INSERT INTO companies (id, created_at, name) VALUES (?, ?, ?)", companyId, LocalDateTime.now(), "ACME");
-
+        // Database is fresh with create-drop, so just seed test data
         // Seed postings: 2 DRAFT, 1 PUBLISHED, 1 deleted
         repo.save(entity("Title-A", JobPostingStatus.DRAFT, false));
         repo.save(entity("Title-B", JobPostingStatus.DRAFT, false));
@@ -71,6 +39,9 @@ class JobPostingRepositoryTest {
         JobPosting deleted = entity("Title-D", JobPostingStatus.PUBLISHED, true);
         deleted.setDeletedAt(LocalDateTime.now());
         repo.save(deleted);
+        
+        entityManager.flush();
+        entityManager.clear();
     }
 
     private JobPosting entity(String title, JobPostingStatus status, boolean deleted) {

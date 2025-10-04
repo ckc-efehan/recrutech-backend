@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Recrutech Platform Service - Test Database Schema
+# Version: 1.0.0
+# Description: Test-specific changelog for repository integration tests
+# 
+# This changelog creates minimal table schemas required for @DataJpaTest integration tests.
+# It creates tables in the proper dependency order to satisfy foreign key constraints.
+# The test setup (BeforeEach methods) will seed the necessary data.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create users table (base dependency) -->
+    <changeSet id="test-create-users-table" author="Test Suite">
+        <createTable tableName="users">
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create companies table (depends on users for admin_user_id) -->
+    <changeSet id="test-create-companies-table" author="Test Suite">
+        <createTable tableName="companies">
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create applicants table (depends on users) -->
+    <changeSet id="test-create-applicants-table" author="Test Suite">
+        <createTable tableName="applicants">
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create job_postings table (depends on companies and users) -->
+    <changeSet id="test-create-job-postings-table" author="Test Suite">
+        <createTable tableName="job_postings">
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="company_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by_user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by_user_id" type="char(36)"/>
+            <column name="deleted_by_user_id" type="char(36)"/>
+            <column name="title" type="varchar(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location" type="varchar(200)"/>
+            <column name="employment_type" type="varchar(50)"/>
+            <column name="salary_min" type="decimal(12,2)"/>
+            <column name="salary_max" type="decimal(12,2)"/>
+            <column name="currency" type="varchar(3)"/>
+            <column name="status" type="varchar(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="datetime"/>
+            <column name="expires_at" type="datetime"/>
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="datetime"/>
+        </createTable>
+
+        <!-- Add foreign keys -->
+        <addForeignKeyConstraint
+                baseTableName="job_postings"
+                baseColumnNames="company_id"
+                constraintName="fk_test_job_postings_company"
+                referencedTableName="companies"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="job_postings"
+                baseColumnNames="created_by_user_id"
+                constraintName="fk_test_job_postings_created_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"
+                onUpdate="CASCADE"/>
+    </changeSet>
+
+    <!-- Create applications table (depends on applicants and job_postings) -->
+    <changeSet id="test-create-applications-table" author="Test Suite">
+        <createTable tableName="applications">
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="applicant_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="job_posting_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by_user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by_user_id" type="char(36)"/>
+            <column name="deleted_by_user_id" type="char(36)"/>
+            <column name="cover_letter" type="text"/>
+            <column name="resume_url" type="varchar(500)"/>
+            <column name="portfolio_url" type="varchar(500)"/>
+            <column name="status" type="varchar(30)" defaultValue="SUBMITTED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="submitted_at" type="datetime"/>
+            <column name="reviewed_at" type="datetime"/>
+            <column name="interview_scheduled_at" type="datetime"/>
+            <column name="offer_extended_at" type="datetime"/>
+            <column name="finalized_at" type="datetime"/>
+            <column name="hr_notes" type="text"/>
+            <column name="rejection_reason" type="text"/>
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="datetime"/>
+        </createTable>
+
+        <!-- Add foreign keys -->
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="applicant_id"
+                constraintName="fk_test_applications_applicant"
+                referencedTableName="applicants"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="job_posting_id"
+                constraintName="fk_test_applications_job_posting"
+                referencedTableName="job_postings"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="created_by_user_id"
+                constraintName="fk_test_applications_created_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"
+                onUpdate="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -14,9 +14,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * REST controller for managing job postings.
+ * Provides endpoints for CRUD operations and status transitions.
+ */
 @RestController
 @RequestMapping("/companies/{companyId}/job-postings")
 public class JobPostingController {
+
+    private static final int DEFAULT_PAGE_NUMBER = 0;
+    private static final String DEFAULT_PAGE_SIZE = "20";
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MIN_PAGE_SIZE = 1;
+    private static final String DEFAULT_SORT = "createdAt,desc";
+    private static final String SORT_SEPARATOR = ",";
+    private static final String SORT_DIRECTION_ASC = "asc";
 
     private final JobPostingService service;
 
@@ -54,9 +66,9 @@ public class JobPostingController {
             @PathVariable String companyId,
             @RequestParam(required = false) JobPostingStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
-        Pageable pageable = toPageable(page, size, sort);
+            @RequestParam(defaultValue = DEFAULT_PAGE_SIZE) int size,
+            @RequestParam(defaultValue = DEFAULT_SORT) String sort) {
+        Pageable pageable = createPageable(page, size, sort);
         return ResponseEntity.ok(service.list(companyId, status, pageable));
     }
 
@@ -85,11 +97,25 @@ public class JobPostingController {
         return ResponseEntity.noContent().build();
     }
 
-    private Pageable toPageable(int page, int size, String sort) {
-        // sort format: "field,dir" e.g., "createdAt,desc"
-        String[] parts = sort.split(",");
-        String field = parts[0];
-        Sort.Direction direction = (parts.length > 1 && parts[1].equalsIgnoreCase("asc")) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), Sort.by(direction, field));
+    /**
+     * Creates a Pageable object from pagination parameters.
+     * Applies validation to ensure page and size are within acceptable bounds.
+     * 
+     * @param page the page number (will be clamped to minimum 0)
+     * @param size the page size (will be clamped between 1 and 100)
+     * @param sort the sort specification in format "field,direction" (e.g., "createdAt,desc")
+     * @return a validated Pageable object
+     */
+    private Pageable createPageable(int page, int size, String sort) {
+        String[] sortParts = sort.split(SORT_SEPARATOR);
+        String sortField = sortParts[0];
+        Sort.Direction direction = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase(SORT_DIRECTION_ASC)) 
+                ? Sort.Direction.ASC 
+                : Sort.Direction.DESC;
+        
+        int validatedPage = Math.max(page, DEFAULT_PAGE_NUMBER);
+        int validatedSize = Math.min(Math.max(size, MIN_PAGE_SIZE), MAX_PAGE_SIZE);
+        
+        return PageRequest.of(validatedPage, validatedSize, Sort.by(direction, sortField));
     }
 }

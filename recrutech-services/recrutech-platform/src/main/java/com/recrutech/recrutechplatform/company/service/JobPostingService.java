@@ -15,11 +15,22 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Service for managing job postings.
+ * Handles CRUD operations, status transitions, and business validations.
+ */
 @Service
 @Transactional
 public class JobPostingService {
+
+    private static final String JOB_POSTING_NOT_FOUND_MESSAGE = "Job posting not found";
+    private static final String SALARY_MIN_GREATER_THAN_MAX_MESSAGE = "salaryMin cannot be greater than salaryMax";
+    private static final String CURRENCY_REQUIRED_MESSAGE = "currency is required when salaryMin or salaryMax is provided";
+    private static final String EXPIRES_AT_MUST_BE_FUTURE_MESSAGE = "expiresAt must be in the future";
+    private static final String CANNOT_PUBLISH_ARCHIVED_MESSAGE = "Cannot publish an archived job posting";
 
     private final JobPostingRepository repository;
 
@@ -43,8 +54,7 @@ public class JobPostingService {
     public JobPostingResponse getById(String companyId, String id) {
         UuidValidator.validateUuid(companyId, "companyId");
         UuidValidator.validateUuid(id, "id");
-        JobPosting entity = repository.findByIdAndCompanyIdAndIsDeletedFalse(id, companyId)
-                .orElseThrow(() -> new NotFoundException("Job posting not found"));
+        JobPosting entity = findJobPostingByIdAndCompanyId(id, companyId);
         return JobPostingMapper.toResponse(entity);
     }
 
@@ -53,8 +63,7 @@ public class JobPostingService {
         UuidValidator.validateUuid(id, "id");
         validateBusiness(request.salaryMin(), request.salaryMax(), request.currency(), request.expiresAt());
 
-        JobPosting entity = repository.findByIdAndCompanyIdAndIsDeletedFalse(id, companyId)
-                .orElseThrow(() -> new NotFoundException("Job posting not found"));
+        JobPosting entity = findJobPostingByIdAndCompanyId(id, companyId);
 
         JobPostingMapper.updateEntity(request, entity);
         entity.setUpdatedByUserId(userId);
@@ -74,14 +83,15 @@ public class JobPostingService {
     public JobPostingResponse publish(String companyId, String id, String userId) {
         validateIds(companyId, userId);
         UuidValidator.validateUuid(id, "id");
-        JobPosting entity = repository.findByIdAndCompanyIdAndIsDeletedFalse(id, companyId)
-                .orElseThrow(() -> new NotFoundException("Job posting not found"));
+        JobPosting entity = findJobPostingByIdAndCompanyId(id, companyId);
+        
         if (entity.getStatus() == JobPostingStatus.PUBLISHED) {
             return JobPostingMapper.toResponse(entity); // idempotent
         }
         if (entity.getStatus() == JobPostingStatus.ARCHIVED) {
-            throw new ValidationException("Cannot publish an archived job posting");
+            throw new ValidationException(CANNOT_PUBLISH_ARCHIVED_MESSAGE);
         }
+        
         entity.setStatus(JobPostingStatus.PUBLISHED);
         entity.setPublishedAt(LocalDateTime.now());
         entity.setUpdatedByUserId(userId);
@@ -91,11 +101,12 @@ public class JobPostingService {
     public JobPostingResponse close(String companyId, String id, String userId) {
         validateIds(companyId, userId);
         UuidValidator.validateUuid(id, "id");
-        JobPosting entity = repository.findByIdAndCompanyIdAndIsDeletedFalse(id, companyId)
-                .orElseThrow(() -> new NotFoundException("Job posting not found"));
+        JobPosting entity = findJobPostingByIdAndCompanyId(id, companyId);
+        
         if (entity.getStatus() == JobPostingStatus.ARCHIVED) {
             return JobPostingMapper.toResponse(entity); // idempotent
         }
+        
         entity.setStatus(JobPostingStatus.ARCHIVED);
         entity.setUpdatedByUserId(userId);
         return JobPostingMapper.toResponse(repository.save(entity));
@@ -104,8 +115,8 @@ public class JobPostingService {
     public void softDelete(String companyId, String id, String userId) {
         validateIds(companyId, userId);
         UuidValidator.validateUuid(id, "id");
-        JobPosting entity = repository.findByIdAndCompanyIdAndIsDeletedFalse(id, companyId)
-                .orElseThrow(() -> new NotFoundException("Job posting not found"));
+        JobPosting entity = findJobPostingByIdAndCompanyId(id, companyId);
+        
         entity.setDeleted(true);
         entity.setDeletedAt(LocalDateTime.now());
         entity.setDeletedByUserId(userId);
@@ -117,15 +128,28 @@ public class JobPostingService {
         UuidValidator.validateUuid(userId, "userId");
     }
 
-    private void validateBusiness(java.math.BigDecimal min, java.math.BigDecimal max, String currency, LocalDateTime expiresAt) {
+    private void validateBusiness(BigDecimal min, BigDecimal max, String currency, LocalDateTime expiresAt) {
         if (min != null && max != null && min.compareTo(max) > 0) {
-            throw new ValidationException("salaryMin cannot be greater than salaryMax");
+            throw new ValidationException(SALARY_MIN_GREATER_THAN_MAX_MESSAGE);
         }
         if ((min != null || max != null) && currency == null) {
-            throw new ValidationException("currency is required when salaryMin or salaryMax is provided");
+            throw new ValidationException(CURRENCY_REQUIRED_MESSAGE);
         }
         if (expiresAt != null && expiresAt.isBefore(LocalDateTime.now())) {
-            throw new ValidationException("expiresAt must be in the future");
+            throw new ValidationException(EXPIRES_AT_MUST_BE_FUTURE_MESSAGE);
         }
+    }
+
+    /**
+     * Finds a job posting by ID and company ID, ensuring it's not deleted.
+     *
+     * @param id the job posting ID
+     * @param companyId the company ID
+     * @return the found job posting
+     * @throws NotFoundException if the job posting is not found
+     */
+    private JobPosting findJobPostingByIdAndCompanyId(String id, String companyId) {
+        return repository.findByIdAndCompanyIdAndIsDeletedFalse(id, companyId)
+                .orElseThrow(() -> new NotFoundException(JOB_POSTING_NOT_FOUND_MESSAGE));
     }
 }

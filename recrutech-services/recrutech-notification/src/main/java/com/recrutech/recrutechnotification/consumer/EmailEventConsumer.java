@@ -161,12 +161,6 @@ public class EmailEventConsumer {
         }
     }
 
-    // @KafkaListener(topics = "email-verification-dlq,welcome-email-dlq")
-    // public void handleDeadLetterEvents(@Payload String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-    //     log.error("[DEBUG_LOG] Received dead letter event from topic: {}. Message: {}", topic, message);
-    //     // Handle dead letter events - could store in database for manual review
-    // }
-
     /**
      * Consumes password reset email events from Kafka topic.
      */

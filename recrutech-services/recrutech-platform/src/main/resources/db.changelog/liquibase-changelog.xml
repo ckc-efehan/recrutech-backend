@@ -20,4 +20,7 @@
     <!-- Step: Create job postings infrastructure -->
     <include file="/db.changelog/v0.1/05-create-job-postings-table.xml"/>
 
+    <!-- Step: Create applications infrastructure -->
+    <include file="/db.changelog/v0.1/06-create-applications-table.xml"/>
+
 </databaseChangeLog>

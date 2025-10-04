@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Platform Module - Applications Table
+# Version: 1.0.0
+# Author: Efehan Cekic
+# Description: Creates the applications table linking applicants to job postings with status tracking
+# Dependencies: users, applicants, job_postings tables
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create applications table -->
+    <changeSet id="create-applications-table-v1.0" author="Efehan Cekic">
+        <comment>
+            Creates the applications table for managing job applications with full lifecycle tracking.
+        </comment>
+
+        <createTable tableName="applications">
+            <!-- Primary Key and Base Entity Fields -->
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Core Relationships -->
+            <column name="applicant_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="job_posting_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Audit Fields -->
+            <column name="created_by_user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by_user_id" type="char(36)"/>
+            <column name="deleted_by_user_id" type="char(36)"/>
+
+            <!-- Application Content -->
+            <column name="cover_letter" type="text"/>
+            <column name="resume_url" type="varchar(500)"/>
+            <column name="portfolio_url" type="varchar(500)"/>
+
+            <!-- Status & Lifecycle Tracking -->
+            <column name="status" type="varchar(30)" defaultValue="SUBMITTED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="submitted_at" type="datetime"/>
+            <column name="reviewed_at" type="datetime"/>
+            <column name="interview_scheduled_at" type="datetime"/>
+            <column name="offer_extended_at" type="datetime"/>
+            <column name="finalized_at" type="datetime"/>
+
+            <!-- Additional Notes -->
+            <column name="hr_notes" type="text"/>
+            <column name="rejection_reason" type="text"/>
+
+            <!-- Soft Delete -->
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="datetime"/>
+        </createTable>
+
+    </changeSet>
+
+    <!-- Indexes for performance -->
+    <changeSet id="create-applications-indexes-v1.0" author="Efehan Cekic">
+        <comment>
+            Creates indexes for efficient querying of applications by applicant, job posting, and status.
+        </comment>
+
+        <!-- Index for applicant's applications -->
+        <createIndex tableName="applications" indexName="idx_applications_applicant">
+            <column name="applicant_id"/>
+        </createIndex>
+
+        <!-- Index for job posting's applications -->
+        <createIndex tableName="applications" indexName="idx_applications_job_posting">
+            <column name="job_posting_id"/>
+        </createIndex>
+
+        <!-- Composite index for applicant and status -->
+        <createIndex tableName="applications" indexName="idx_applications_applicant_status">
+            <column name="applicant_id"/>
+            <column name="status"/>
+        </createIndex>
+
+        <!-- Composite index for job posting and status -->
+        <createIndex tableName="applications" indexName="idx_applications_job_posting_status">
+            <column name="job_posting_id"/>
+            <column name="status"/>
+        </createIndex>
+
+        <!-- Index for preventing duplicate applications -->
+        <createIndex tableName="applications" indexName="idx_applications_applicant_job_posting">
+            <column name="applicant_id"/>
+            <column name="job_posting_id"/>
+            <column name="is_deleted"/>
+        </createIndex>
+
+        <!-- Index for soft delete filtering -->
+        <createIndex tableName="applications" indexName="idx_applications_is_deleted">
+            <column name="is_deleted"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Foreign keys for referential integrity -->
+    <changeSet id="create-applications-foreign-keys-v1.0" author="Efehan Cekic">
+        <comment>
+            Creates foreign key constraints to maintain referential integrity.
+        </comment>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="applicant_id"
+                constraintName="fk_applications_applicant"
+                referencedTableName="applicants"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="job_posting_id"
+                constraintName="fk_applications_job_posting"
+                referencedTableName="job_postings"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="created_by_user_id"
+                constraintName="fk_applications_created_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="updated_by_user_id"
+                constraintName="fk_applications_updated_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="applications"
+                baseColumnNames="deleted_by_user_id"
+                constraintName="fk_applications_deleted_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

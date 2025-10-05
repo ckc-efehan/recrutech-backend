@@ -72,7 +72,6 @@
                     </argLine>
                 </configuration>
             </plugin>
-
             <!-- JaCoCo Coverage for all modules + aggregate report at aggregator level -->
 
             <!-- Checkstyle -->

@@ -3,12 +3,17 @@ package com.recrutech.recrutechplatform.application.service;
 import com.recrutech.common.exception.FileStorageException;
 import com.recrutech.common.exception.ValidationException;
 import com.recrutech.recrutechplatform.config.MinioProperties;
+import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -23,6 +28,7 @@ import java.util.concurrent.TimeUnit;
  * Service for handling document storage operations with MinIO.
  * Provides S3-compatible object storage for PDF documents.
  * Best practices applied:
+ * - Lazy bucket initialization on service startup
  * - File validation (type, size, name)
  * - Unique object key generation
  * - Pre-signed URLs for temporary access
@@ -30,6 +36,8 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 public class MinioStorageService {
+
+    private static final Logger log = LoggerFactory.getLogger(MinioStorageService.class);
 
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
@@ -39,6 +47,43 @@ public class MinioStorageService {
             MinioProperties minioProperties) {
         this.minioClient = minioClient;
         this.minioProperties = minioProperties;
+    }
+
+    /**
+     * Initializes the MinIO bucket lazily after service construction.
+     * This ensures the bucket exists before any storage operations are performed.
+     * Bucket creation only happens if auto-create is enabled in properties.
+     */
+    @PostConstruct
+    public void initializeBucket() {
+        if (!minioProperties.isAutoCreateBucket()) {
+            log.info("Auto-create bucket is disabled. Skipping bucket initialization.");
+            return;
+        }
+
+        try {
+            String bucketName = minioProperties.getBucketName();
+            boolean exists = minioClient.bucketExists(
+                    BucketExistsArgs.builder()
+                            .bucket(bucketName)
+                            .build()
+            );
+
+            if (!exists) {
+                log.info("Bucket '{}' does not exist. Creating...", bucketName);
+                minioClient.makeBucket(
+                        MakeBucketArgs.builder()
+                                .bucket(bucketName)
+                                .build()
+                );
+                log.info("Bucket '{}' created successfully.", bucketName);
+            } else {
+                log.info("Bucket '{}' already exists.", bucketName);
+            }
+        } catch (Exception e) {
+            log.error("Failed to initialize MinIO bucket: {}", minioProperties.getBucketName(), e);
+            throw new RuntimeException("Failed to initialize MinIO bucket: " + minioProperties.getBucketName(), e);
+        }
     }
 
     /**

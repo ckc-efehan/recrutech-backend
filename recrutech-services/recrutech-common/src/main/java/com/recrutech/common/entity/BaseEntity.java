@@ -24,7 +24,7 @@ import java.util.Objects;
 public abstract class BaseEntity {
 
     @Id
-    @Column(name = "ID", columnDefinition = "char", nullable = false, length = 36)
+    @Column(name = "ID", columnDefinition = "CHAR(36)", nullable = false, length = 36)
     protected String id;
 
     @Column(nullable = false)

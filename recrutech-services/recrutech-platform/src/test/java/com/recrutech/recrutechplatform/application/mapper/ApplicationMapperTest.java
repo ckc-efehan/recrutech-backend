@@ -22,9 +22,9 @@ class ApplicationMapperTest {
         assertThat(response.id()).isEqualTo("11111111-1111-1111-1111-111111111111");
         assertThat(response.applicantId()).isEqualTo("22222222-2222-2222-2222-222222222222");
         assertThat(response.jobPostingId()).isEqualTo("33333333-3333-3333-3333-333333333333");
-        assertThat(response.coverLetter()).isEqualTo("Cover letter text");
-        assertThat(response.resumeUrl()).isEqualTo("https://resume.url");
-        assertThat(response.portfolioUrl()).isEqualTo("https://portfolio.url");
+        assertThat(response.coverLetterPath()).isEqualTo("applicant_coverLetter_123.pdf");
+        assertThat(response.resumePath()).isEqualTo("applicant_resume_456.pdf");
+        assertThat(response.portfolioPath()).isEqualTo("applicant_portfolio_789.pdf");
         assertThat(response.status()).isEqualTo(ApplicationStatus.UNDER_REVIEW);
         assertThat(response.submittedAt()).isEqualTo(LocalDateTime.of(2025, 10, 1, 10, 0));
         assertThat(response.reviewedAt()).isEqualTo(LocalDateTime.of(2025, 10, 2, 14, 30));
@@ -46,9 +46,9 @@ class ApplicationMapperTest {
         application.setId("11111111-1111-1111-1111-111111111111");
         application.setApplicantId("22222222-2222-2222-2222-222222222222");
         application.setJobPostingId("33333333-3333-3333-3333-333333333333");
-        application.setCoverLetter("Cover letter text");
-        application.setResumeUrl("https://resume.url");
-        application.setPortfolioUrl("https://portfolio.url");
+        application.setCoverLetterPath("applicant_coverLetter_123.pdf");
+        application.setResumePath("applicant_resume_456.pdf");
+        application.setPortfolioPath("applicant_portfolio_789.pdf");
         application.setStatus(ApplicationStatus.UNDER_REVIEW);
         application.setSubmittedAt(LocalDateTime.of(2025, 10, 1, 10, 0));
         application.setReviewedAt(LocalDateTime.of(2025, 10, 2, 14, 30));
@@ -81,9 +81,9 @@ class ApplicationMapperTest {
         ApplicationResponse response = ApplicationMapper.toResponse(application);
 
         assertThat(response).isNotNull();
-        assertThat(response.coverLetter()).isNull();
-        assertThat(response.resumeUrl()).isNull();
-        assertThat(response.portfolioUrl()).isNull();
+        assertThat(response.coverLetterPath()).isNull();
+        assertThat(response.resumePath()).isNull();
+        assertThat(response.portfolioPath()).isNull();
         assertThat(response.reviewedAt()).isNull();
         assertThat(response.hrNotes()).isNull();
         assertThat(response.rejectionReason()).isNull();

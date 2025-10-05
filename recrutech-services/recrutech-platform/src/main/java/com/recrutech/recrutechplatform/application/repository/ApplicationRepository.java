@@ -76,4 +76,28 @@ public interface ApplicationRepository extends JpaRepository<Application, String
      */
     boolean existsByApplicantIdAndJobPostingIdAndIsDeletedFalse(String applicantId, String jobPostingId);
 
+    /**
+     * Checks if an applicant exists in the database.
+     * Uses native SQL to avoid needing access to ApplicantRepository from another module.
+     * This is used for proactive validation before creating an application to provide
+     * clear error messages instead of foreign key constraint violations.
+     * 
+     * @param applicantId the ID of the applicant to check
+     * @return true if the applicant exists, false otherwise
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM applicants WHERE id = :applicantId", nativeQuery = true)
+    boolean applicantExists(@Param("applicantId") String applicantId);
+
+    /**
+     * Checks if a job posting exists and is not deleted.
+     * Uses native SQL for efficient existence checking.
+     * This is used for proactive validation before creating an application to provide
+     * clear error messages instead of foreign key constraint violations.
+     * 
+     * @param jobPostingId the ID of the job posting to check
+     * @return true if the job posting exists and is not deleted, false otherwise
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM job_postings WHERE id = :jobPostingId AND is_deleted = false", nativeQuery = true)
+    boolean jobPostingExists(@Param("jobPostingId") String jobPostingId);
+
 }

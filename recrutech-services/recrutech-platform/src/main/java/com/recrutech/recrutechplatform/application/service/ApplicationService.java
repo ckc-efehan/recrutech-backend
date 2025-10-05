@@ -1,5 +1,6 @@
 package com.recrutech.recrutechplatform.application.service;
 
+import com.recrutech.common.exception.EntityReferenceNotFoundException;
 import com.recrutech.common.exception.NotFoundException;
 import com.recrutech.common.exception.ValidationException;
 import com.recrutech.common.util.UuidValidator;
@@ -40,10 +41,23 @@ public class ApplicationService {
     /**
      * Submit a new application to a job posting.
      * Validates that the applicant hasn't already applied to this job.
+     * Validates that referenced entities (applicant, job posting) exist.
      */
     public Application submit(String applicantId, String jobPostingId, String userId, 
-                               String coverLetter, String resumeUrl, String portfolioUrl) {
+                               String coverLetterPath, String resumePath, String portfolioPath) {
         validateIds(applicantId, jobPostingId, userId);
+        
+        // Validate that applicant exists before attempting to create application
+        if (!repository.applicantExists(applicantId)) {
+            throw new EntityReferenceNotFoundException(
+                "Applicant profile does not exist. Please create an applicant profile before submitting an application.");
+        }
+        
+        // Validate that job posting exists and is not deleted
+        if (!repository.jobPostingExists(jobPostingId)) {
+            throw new EntityReferenceNotFoundException(
+                "Job posting does not exist or has been deleted.");
+        }
         
         // Check for duplicate application
         if (repository.existsByApplicantIdAndJobPostingIdAndIsDeletedFalse(applicantId, jobPostingId)) {
@@ -54,9 +68,9 @@ public class ApplicationService {
         application.setApplicantId(applicantId);
         application.setJobPostingId(jobPostingId);
         application.setCreatedByUserId(userId);
-        application.setCoverLetter(coverLetter);
-        application.setResumeUrl(resumeUrl);
-        application.setPortfolioUrl(portfolioUrl);
+        application.setCoverLetterPath(coverLetterPath);
+        application.setResumePath(resumePath);
+        application.setPortfolioPath(portfolioPath);
         application.setStatus(ApplicationStatus.SUBMITTED);
         application.setSubmittedAt(LocalDateTime.now());
 

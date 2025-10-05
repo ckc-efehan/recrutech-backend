@@ -51,7 +51,7 @@ class JobPostingControllerTest {
     @Autowired
     JobPostingService service;
 
-    private static final String BASE = "/companies/11111111-1111-1111-1111-111111111111/job-postings";
+    private static final String BASE = "/api/companies/11111111-1111-1111-1111-111111111111/job-postings";
 
     private JobPostingResponse sampleResponse(String id) {
         return new JobPostingResponse(

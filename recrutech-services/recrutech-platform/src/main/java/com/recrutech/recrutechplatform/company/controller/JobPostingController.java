@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  * Provides endpoints for CRUD operations and status transitions.
  */
 @RestController
-@RequestMapping("/companies/{companyId}/job-postings")
+@RequestMapping("/api/companies/{companyId}/job-postings")
 public class JobPostingController {
 
     private static final int DEFAULT_PAGE_NUMBER = 0;

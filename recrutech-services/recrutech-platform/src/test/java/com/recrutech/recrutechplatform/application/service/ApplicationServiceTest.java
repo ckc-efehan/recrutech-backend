@@ -52,6 +52,8 @@ class ApplicationServiceTest {
 
     @Test
     void submit_success() {
+        when(repository.applicantExists(applicantId)).thenReturn(true);
+        when(repository.jobPostingExists(jobPostingId)).thenReturn(true);
         when(repository.existsByApplicantIdAndJobPostingIdAndIsDeletedFalse(applicantId, jobPostingId))
                 .thenReturn(false);
         when(repository.save(any(Application.class))).thenAnswer(invocation -> {
@@ -76,9 +78,9 @@ class ApplicationServiceTest {
         assertThat(result.getCreatedByUserId()).isEqualTo(userId);
         assertThat(result.getStatus()).isEqualTo(ApplicationStatus.SUBMITTED);
         assertThat(result.getSubmittedAt()).isNotNull();
-        assertThat(result.getCoverLetter()).isEqualTo("I am interested in this position");
-        assertThat(result.getResumeUrl()).isEqualTo("https://resume.url");
-        assertThat(result.getPortfolioUrl()).isEqualTo("https://portfolio.url");
+        assertThat(result.getCoverLetterPath()).isEqualTo("I am interested in this position");
+        assertThat(result.getResumePath()).isEqualTo("https://resume.url");
+        assertThat(result.getPortfolioPath()).isEqualTo("https://portfolio.url");
 
         ArgumentCaptor<Application> captor = ArgumentCaptor.forClass(Application.class);
         verify(repository).save(captor.capture());
@@ -90,6 +92,8 @@ class ApplicationServiceTest {
 
     @Test
     void submit_throwsValidationException_whenDuplicateApplication() {
+        when(repository.applicantExists(applicantId)).thenReturn(true);
+        when(repository.jobPostingExists(jobPostingId)).thenReturn(true);
         when(repository.existsByApplicantIdAndJobPostingIdAndIsDeletedFalse(applicantId, jobPostingId))
                 .thenReturn(true);
 
@@ -592,8 +596,8 @@ class ApplicationServiceTest {
         application.setCreatedByUserId(userId);
         application.setStatus(ApplicationStatus.SUBMITTED);
         application.setSubmittedAt(LocalDateTime.now());
-        application.setCoverLetter("Cover letter");
-        application.setResumeUrl("https://resume.url");
+        application.setCoverLetterPath("applicant_coverLetter_123.pdf");
+        application.setResumePath("applicant_resume_456.pdf");
         application.setCreatedAt(LocalDateTime.now());
         return application;
     }

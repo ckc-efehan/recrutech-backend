@@ -36,15 +36,15 @@ public class Application extends BaseEntity {
     @Column(columnDefinition = "CHAR(36)")
     private String updatedByUserId; // FK to users.id (HR who updated status)
     
-    // Application content
-    @Column(columnDefinition = "TEXT")
-    private String coverLetter;
+    // Application content - PDF document paths
+    @Column(length = 500)
+    private String coverLetterPath; // Path to uploaded cover letter PDF
     
     @Column(length = 500)
-    private String resumeUrl; // URL to uploaded resume document
+    private String resumePath; // Path to uploaded resume PDF
     
     @Column(length = 500)
-    private String portfolioUrl; // Optional portfolio link
+    private String portfolioPath; // Optional path to uploaded portfolio PDF
     
     // Status and lifecycle
     @Enumerated(EnumType.STRING)

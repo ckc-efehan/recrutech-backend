@@ -1,27 +1,32 @@
 package com.recrutech.recrutechplatform.application.controller;
 
 import com.recrutech.recrutechplatform.application.dto.ApplicationResponse;
-import com.recrutech.recrutechplatform.application.dto.ApplicationSubmitRequest;
 import com.recrutech.recrutechplatform.application.dto.ApplicationUpdateStatusRequest;
 import com.recrutech.recrutechplatform.application.mapper.ApplicationMapper;
 import com.recrutech.recrutechplatform.application.model.Application;
 import com.recrutech.recrutechplatform.application.model.ApplicationStatus;
 import com.recrutech.recrutechplatform.application.service.ApplicationService;
+import com.recrutech.recrutechplatform.application.service.MinioStorageService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * REST controller for managing job applications.
  * Provides endpoints for application submission, status management, and querying.
  */
 @RestController
-@RequestMapping("/applications")
+@RequestMapping("/api/applications")
 public class ApplicationController {
 
     private static final int DEFAULT_PAGE_NUMBER = 0;
@@ -33,26 +38,43 @@ public class ApplicationController {
     private static final String SORT_DIRECTION_ASC = "asc";
 
     private final ApplicationService service;
+    private final MinioStorageService storageService;
 
-    public ApplicationController(ApplicationService service) {
+    public ApplicationController(ApplicationService service, MinioStorageService storageService) {
         this.service = service;
+        this.storageService = storageService;
     }
 
     /**
-     * Submit a new application to a job posting.
+     * Submit a new application to a job posting with PDF documents.
      * POST /applications
+     * Accepts multipart/form-data with required PDFs for cover letter and resume,
+     * and optional portfolio PDF.
      */
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApplicationResponse> submit(
             @RequestHeader("X-User-Id") String userId,
-            @Valid @RequestBody ApplicationSubmitRequest request) {
+            @RequestParam("applicantId") String applicantId,
+            @RequestParam("jobPostingId") String jobPostingId,
+            @RequestParam("coverLetter") MultipartFile coverLetter,
+            @RequestParam("resume") MultipartFile resume,
+            @RequestParam(value = "portfolio", required = false) MultipartFile portfolio) {
+        
+        // Store the uploaded files
+        String coverLetterPath = storageService.storeFile(coverLetter, "coverLetter", applicantId);
+        String resumePath = storageService.storeFile(resume, "resume", applicantId);
+        String portfolioPath = (portfolio != null && !portfolio.isEmpty()) 
+                ? storageService.storeFile(portfolio, "portfolio", applicantId) 
+                : null;
+
+        // Submit the application with file paths
         Application application = service.submit(
-                request.applicantId(),
-                request.jobPostingId(),
+                applicantId,
+                jobPostingId,
                 userId,
-                request.coverLetter(),
-                request.resumeUrl(),
-                request.portfolioUrl()
+                coverLetterPath,
+                resumePath,
+                portfolioPath
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(ApplicationMapper.toResponse(application));
     }
@@ -157,6 +179,62 @@ public class ApplicationController {
             @RequestHeader("X-User-Id") String userId) {
         service.softDelete(id, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Download cover letter PDF for an application.
+     * GET /applications/{id}/cover-letter
+     */
+    @GetMapping("/{id}/cover-letter")
+    public ResponseEntity<Resource> downloadCoverLetter(
+            @PathVariable String id,
+            HttpServletRequest request) {
+        Application application = service.getById(id);
+        return downloadDocument(application.getCoverLetterPath(), request);
+    }
+
+    /**
+     * Download resume PDF for an application.
+     * GET /applications/{id}/resume
+     */
+    @GetMapping("/{id}/resume")
+    public ResponseEntity<Resource> downloadResume(
+            @PathVariable String id,
+            HttpServletRequest request) {
+        Application application = service.getById(id);
+        return downloadDocument(application.getResumePath(), request);
+    }
+
+    /**
+     * Download portfolio PDF for an application.
+     * GET /applications/{id}/portfolio
+     */
+    @GetMapping("/{id}/portfolio")
+    public ResponseEntity<Resource> downloadPortfolio(
+            @PathVariable String id,
+            HttpServletRequest request) {
+        Application application = service.getById(id);
+        return downloadDocument(application.getPortfolioPath(), request);
+    }
+
+    /**
+     * Helper method to download a document.
+     * Sets appropriate headers for PDF content type and inline display.
+     */
+    private ResponseEntity<Resource> downloadDocument(String filename, HttpServletRequest request) {
+        if (filename == null || filename.trim().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Resource resource = storageService.loadFileAsResource(filename);
+
+        // Set content type
+        String contentType = "application/pdf";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 
     /**

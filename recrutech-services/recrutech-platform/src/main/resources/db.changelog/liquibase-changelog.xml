@@ -23,4 +23,7 @@
     <!-- Step: Create applications infrastructure -->
     <include file="/db.changelog/v0.1/06-create-applications-table.xml"/>
 
+    <!-- Step: Migrate applications to MinIO storage -->
+    <include file="/db.changelog/v0.1/07-migrate-applications-to-minio-storage.xml"/>
+
 </databaseChangeLog>

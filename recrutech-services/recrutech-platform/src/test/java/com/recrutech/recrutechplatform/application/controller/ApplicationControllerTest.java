@@ -6,6 +6,7 @@ import com.recrutech.recrutechplatform.application.dto.ApplicationUpdateStatusRe
 import com.recrutech.recrutechplatform.application.model.Application;
 import com.recrutech.recrutechplatform.application.model.ApplicationStatus;
 import com.recrutech.recrutechplatform.application.service.ApplicationService;
+import com.recrutech.recrutechplatform.application.service.MinioStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -40,6 +42,11 @@ class ApplicationControllerTest {
         ApplicationService applicationService() {
             return org.mockito.Mockito.mock(ApplicationService.class);
         }
+
+        @Bean
+        MinioStorageService minioStorageService() {
+            return org.mockito.Mockito.mock(MinioStorageService.class);
+        }
     }
 
     @Autowired
@@ -51,12 +58,16 @@ class ApplicationControllerTest {
     @Autowired
     ApplicationService service;
 
+    @Autowired
+    MinioStorageService storageService;
+
     @BeforeEach
     void setUp() {
         reset(service);
+        reset(storageService);
     }
 
-    private static final String BASE = "/applications";
+    private static final String BASE = "/api/applications";
     private static final String USER_ID = "11111111-1111-1111-1111-111111111111";
     private static final String APPLICANT_ID = "22222222-2222-2222-2222-222222222222";
     private static final String JOB_POSTING_ID = "33333333-3333-3333-3333-333333333333";
@@ -71,9 +82,9 @@ class ApplicationControllerTest {
         app.setCreatedByUserId(USER_ID);
         app.setStatus(ApplicationStatus.SUBMITTED);
         app.setSubmittedAt(LocalDateTime.now());
-        app.setCoverLetter("I am very interested in this position");
-        app.setResumeUrl("https://resume.example.com");
-        app.setPortfolioUrl("https://portfolio.example.com");
+        app.setCoverLetterPath("applicant_coverLetter_123.pdf");
+        app.setResumePath("applicant_resume_456.pdf");
+        app.setPortfolioPath("applicant_portfolio_789.pdf");
         app.setCreatedAt(LocalDateTime.now());
         app.setDeleted(false);
         return app;
@@ -83,90 +94,144 @@ class ApplicationControllerTest {
 
     @Test
     void submit_returns201_andDelegatesToService() throws Exception {
-        ApplicationSubmitRequest request = new ApplicationSubmitRequest(
-                APPLICANT_ID,
-                JOB_POSTING_ID,
-                "I am very interested",
-                "https://resume.url",
-                "https://portfolio.url"
+        // Create mock multipart files
+        MockMultipartFile coverLetter = new MockMultipartFile(
+                "coverLetter",
+                "cover-letter.pdf",
+                "application/pdf",
+                "cover letter content".getBytes()
         );
+        MockMultipartFile resume = new MockMultipartFile(
+                "resume",
+                "resume.pdf",
+                "application/pdf",
+                "resume content".getBytes()
+        );
+        MockMultipartFile portfolio = new MockMultipartFile(
+                "portfolio",
+                "portfolio.pdf",
+                "application/pdf",
+                "portfolio content".getBytes()
+        );
+
+        // Mock storage service to return file paths
+        when(storageService.storeFile(any(), eq("coverLetter"), eq(APPLICANT_ID)))
+                .thenReturn("applicant_coverLetter_123.pdf");
+        when(storageService.storeFile(any(), eq("resume"), eq(APPLICANT_ID)))
+                .thenReturn("applicant_resume_456.pdf");
+        when(storageService.storeFile(any(), eq("portfolio"), eq(APPLICANT_ID)))
+                .thenReturn("applicant_portfolio_789.pdf");
 
         when(service.submit(any(), any(), any(), any(), any(), any()))
                 .thenReturn(sampleApplication());
 
-        mockMvc.perform(post(BASE)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-User-Id", USER_ID)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart(BASE)
+                        .file(coverLetter)
+                        .file(resume)
+                        .file(portfolio)
+                        .param("applicantId", APPLICANT_ID)
+                        .param("jobPostingId", JOB_POSTING_ID)
+                        .header("X-User-Id", USER_ID))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(APPLICATION_ID))
                 .andExpect(jsonPath("$.applicantId").value(APPLICANT_ID))
                 .andExpect(jsonPath("$.jobPostingId").value(JOB_POSTING_ID))
                 .andExpect(jsonPath("$.status").value("SUBMITTED"));
 
+        verify(storageService).storeFile(any(), eq("coverLetter"), eq(APPLICANT_ID));
+        verify(storageService).storeFile(any(), eq("resume"), eq(APPLICANT_ID));
+        verify(storageService).storeFile(any(), eq("portfolio"), eq(APPLICANT_ID));
         verify(service).submit(
                 eq(APPLICANT_ID),
                 eq(JOB_POSTING_ID),
                 eq(USER_ID),
-                eq("I am very interested"),
-                eq("https://resume.url"),
-                eq("https://portfolio.url")
+                eq("applicant_coverLetter_123.pdf"),
+                eq("applicant_resume_456.pdf"),
+                eq("applicant_portfolio_789.pdf")
         );
     }
 
     @Test
     void submit_returns400_whenMissingUserHeader() throws Exception {
-        ApplicationSubmitRequest request = new ApplicationSubmitRequest(
-                APPLICANT_ID,
-                JOB_POSTING_ID,
-                "Cover letter",
-                null,
-                null
+        // Create mock multipart files
+        MockMultipartFile coverLetter = new MockMultipartFile(
+                "coverLetter",
+                "cover-letter.pdf",
+                "application/pdf",
+                "cover letter content".getBytes()
+        );
+        MockMultipartFile resume = new MockMultipartFile(
+                "resume",
+                "resume.pdf",
+                "application/pdf",
+                "resume content".getBytes()
         );
 
-        mockMvc.perform(post(BASE)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart(BASE)
+                        .file(coverLetter)
+                        .file(resume)
+                        .param("applicantId", APPLICANT_ID)
+                        .param("jobPostingId", JOB_POSTING_ID))
+                        // Missing X-User-Id header
                 .andExpect(status().isBadRequest());
 
+        verify(storageService, never()).storeFile(any(), any(), any());
         verify(service, never()).submit(any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void submit_returns400_whenMissingApplicantId() throws Exception {
-        ApplicationSubmitRequest request = new ApplicationSubmitRequest(
-                null,
-                JOB_POSTING_ID,
-                "Cover letter",
-                null,
-                null
+        // Create mock multipart files
+        MockMultipartFile coverLetter = new MockMultipartFile(
+                "coverLetter",
+                "cover-letter.pdf",
+                "application/pdf",
+                "cover letter content".getBytes()
+        );
+        MockMultipartFile resume = new MockMultipartFile(
+                "resume",
+                "resume.pdf",
+                "application/pdf",
+                "resume content".getBytes()
         );
 
-        mockMvc.perform(post(BASE)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-User-Id", USER_ID)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart(BASE)
+                        .file(coverLetter)
+                        .file(resume)
+                        // Missing applicantId parameter
+                        .param("jobPostingId", JOB_POSTING_ID)
+                        .header("X-User-Id", USER_ID))
                 .andExpect(status().isBadRequest());
 
+        verify(storageService, never()).storeFile(any(), any(), any());
         verify(service, never()).submit(any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void submit_returns400_whenMissingJobPostingId() throws Exception {
-        ApplicationSubmitRequest request = new ApplicationSubmitRequest(
-                APPLICANT_ID,
-                null,
-                "Cover letter",
-                null,
-                null
+        // Create mock multipart files
+        MockMultipartFile coverLetter = new MockMultipartFile(
+                "coverLetter",
+                "cover-letter.pdf",
+                "application/pdf",
+                "cover letter content".getBytes()
+        );
+        MockMultipartFile resume = new MockMultipartFile(
+                "resume",
+                "resume.pdf",
+                "application/pdf",
+                "resume content".getBytes()
         );
 
-        mockMvc.perform(post(BASE)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("X-User-Id", USER_ID)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(multipart(BASE)
+                        .file(coverLetter)
+                        .file(resume)
+                        .param("applicantId", APPLICANT_ID)
+                        // Missing jobPostingId parameter
+                        .header("X-User-Id", USER_ID))
                 .andExpect(status().isBadRequest());
 
+        verify(storageService, never()).storeFile(any(), any(), any());
         verify(service, never()).submit(any(), any(), any(), any(), any(), any());
     }
 

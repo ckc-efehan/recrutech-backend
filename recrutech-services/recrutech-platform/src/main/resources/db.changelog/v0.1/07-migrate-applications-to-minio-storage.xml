@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Platform Module - Applications Table Migration for MinIO Storage
+# Version: 1.1.0
+# Author: Efehan Cekic
+# Description: Migrates application file storage columns from URL-based to MinIO path-based storage
+# Dependencies: 06-create-applications-table.xml
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Migrate application file storage to MinIO -->
+    <changeSet id="migrate-applications-to-minio-storage-v1.1" author="Efehan Cekic">
+        <comment>
+            Migrates application file storage columns from URL-based to MinIO object key storage.
+            Changes:
+            - cover_letter (TEXT) -> cover_letter_path (VARCHAR(500))
+            - resume_url (VARCHAR(500)) -> resume_path (VARCHAR(500))
+            - portfolio_url (VARCHAR(500)) -> portfolio_path (VARCHAR(500))
+        </comment>
+
+        <!-- Step 1: Rename resume_url to resume_path -->
+        <renameColumn tableName="applications"
+                      oldColumnName="resume_url"
+                      newColumnName="resume_path"
+                      columnDataType="varchar(500)"/>
+
+        <!-- Step 2: Rename portfolio_url to portfolio_path -->
+        <renameColumn tableName="applications"
+                      oldColumnName="portfolio_url"
+                      newColumnName="portfolio_path"
+                      columnDataType="varchar(500)"/>
+
+        <!-- Step 3: Add new cover_letter_path column -->
+        <addColumn tableName="applications">
+            <column name="cover_letter_path" type="varchar(500)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Step 4: Drop old cover_letter column (TEXT type) -->
+        <dropColumn tableName="applications" columnName="cover_letter"/>
+
+    </changeSet>
+
+</databaseChangeLog>

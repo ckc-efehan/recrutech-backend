@@ -1,22 +1,25 @@
 package com.recrutech.recrutechplatform;
 
+import com.recrutech.recrutechplatform.config.MinioTestConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
+/**
+ * Integration test for the Recrutech Platform application.
+ * This test verifies that the Spring application context can load successfully
+ * with all beans, including MinIO via Testcontainers.
+ */
 @SpringBootTest
-@TestPropertySource(properties = {
-        "spring.liquibase.enabled=false",
-        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=none"
-})
+@ActiveProfiles("test")
+@Import(MinioTestConfiguration.class)
 class RecrutechPlatformApplicationTests {
 
     @Test
     void contextLoads() {
+        // Verifies that the application context loads successfully
+        // with all beans including MinIO container
     }
 
 }

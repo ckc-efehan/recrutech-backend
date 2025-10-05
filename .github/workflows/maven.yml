@@ -35,7 +35,7 @@ jobs:
 
       - name: Build & Test
         run: |
-          mvn -U -T1C clean verify -Dmaven.compiler.source=21 -Dmaven.compiler.target=21
+          mvn -U -T1C clean verify
 
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v4

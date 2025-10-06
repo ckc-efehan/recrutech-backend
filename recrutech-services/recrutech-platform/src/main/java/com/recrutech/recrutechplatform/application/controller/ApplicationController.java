@@ -218,6 +218,48 @@ public class ApplicationController {
     }
 
     /**
+     * Generate a temporary presigned URL for accessing the cover letter.
+     * GET /applications/{id}/cover-letter/presigned-url
+     * The URL is valid for the specified duration (default: 60 minutes).
+     */
+    @GetMapping("/{id}/cover-letter/presigned-url")
+    public ResponseEntity<PresignedUrlResponse> getCoverLetterPresignedUrl(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "60") int expiryMinutes) {
+        validateExpiryMinutes(expiryMinutes);
+        String url = service.generatePresignedUrl(id, "coverLetter", expiryMinutes);
+        return ResponseEntity.ok(new PresignedUrlResponse(url, expiryMinutes));
+    }
+
+    /**
+     * Generate a temporary presigned URL for accessing the resume.
+     * GET /applications/{id}/resume/presigned-url
+     * The URL is valid for the specified duration (default: 60 minutes).
+     */
+    @GetMapping("/{id}/resume/presigned-url")
+    public ResponseEntity<PresignedUrlResponse> getResumePresignedUrl(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "60") int expiryMinutes) {
+        validateExpiryMinutes(expiryMinutes);
+        String url = service.generatePresignedUrl(id, "resume", expiryMinutes);
+        return ResponseEntity.ok(new PresignedUrlResponse(url, expiryMinutes));
+    }
+
+    /**
+     * Generate a temporary presigned URL for accessing the portfolio.
+     * GET /applications/{id}/portfolio/presigned-url
+     * The URL is valid for the specified duration (default: 60 minutes).
+     */
+    @GetMapping("/{id}/portfolio/presigned-url")
+    public ResponseEntity<PresignedUrlResponse> getPortfolioPresignedUrl(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "60") int expiryMinutes) {
+        validateExpiryMinutes(expiryMinutes);
+        String url = service.generatePresignedUrl(id, "portfolio", expiryMinutes);
+        return ResponseEntity.ok(new PresignedUrlResponse(url, expiryMinutes));
+    }
+
+    /**
      * Helper method to download a document.
      * Sets appropriate headers for PDF content type and inline display.
      */
@@ -235,6 +277,34 @@ public class ApplicationController {
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
+    }
+
+    /**
+     * Validates the expiry time for presigned URLs.
+     * Ensures the value is within acceptable bounds (1-1440 minutes / 24 hours).
+     * 
+     * @param expiryMinutes the expiry time in minutes
+     * @throws com.recrutech.common.exception.ValidationException if the value is out of bounds
+     */
+    private void validateExpiryMinutes(int expiryMinutes) {
+        final int MIN_EXPIRY_MINUTES = 1;
+        final int MAX_EXPIRY_MINUTES = 1440; // 24 hours
+        
+        if (expiryMinutes < MIN_EXPIRY_MINUTES || expiryMinutes > MAX_EXPIRY_MINUTES) {
+            throw new com.recrutech.common.exception.ValidationException(
+                String.format("Expiry time must be between %d and %d minutes", 
+                    MIN_EXPIRY_MINUTES, MAX_EXPIRY_MINUTES));
+        }
+    }
+
+    /**
+     * Response DTO for presigned URL endpoints.
+     * Contains the temporary URL and its expiry information.
+     * 
+     * @param url the presigned URL for document access
+     * @param expiryMinutes the duration in minutes until the URL expires
+     */
+    public record PresignedUrlResponse(String url, int expiryMinutes) {
     }
 
     /**

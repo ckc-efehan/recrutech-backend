@@ -3,6 +3,7 @@ package com.recrutech.recrutechplatform.application.service;
 import com.recrutech.common.exception.FileStorageException;
 import com.recrutech.common.exception.ValidationException;
 import com.recrutech.recrutechplatform.config.MinioProperties;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -21,6 +22,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -53,8 +55,10 @@ public class MinioStorageService {
      * Initializes the MinIO bucket lazily after service construction.
      * This ensures the bucket exists before any storage operations are performed.
      * Bucket creation only happens if auto-create is enabled in properties.
+     * Protected by circuit breaker to prevent cascading failures during startup.
      */
     @PostConstruct
+    @CircuitBreaker(name = "minioService", fallbackMethod = "initializeBucketFallback")
     public void initializeBucket() {
         if (!minioProperties.isAutoCreateBucket()) {
             log.info("Auto-create bucket is disabled. Skipping bucket initialization.");
@@ -89,16 +93,18 @@ public class MinioStorageService {
     /**
      * Stores a file in MinIO and returns the object key.
      * Object key format: applicantId/fileType/UUID.pdf
+     * Protected by circuit breaker to prevent cascading failures.
      *
      * @param file the multipart file to store
      * @param fileType the type of document (coverLetter, resume, portfolio)
      * @param applicantId the ID of the applicant
      * @return the MinIO object key
      */
+    @CircuitBreaker(name = "minioService", fallbackMethod = "storeFileFallback")
     public String storeFile(MultipartFile file, String fileType, String applicantId) {
         validateFile(file);
 
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
         String fileExtension = getFileExtension(originalFilename);
         
         // Generate unique object key: applicantId/fileType/UUID.pdf
@@ -118,18 +124,22 @@ public class MinioStorageService {
                             .build()
             );
 
+            log.info("Successfully stored file: {}", objectKey);
             return objectKey;
         } catch (Exception ex) {
+            log.error("Failed to store file in MinIO: {}", objectKey, ex);
             throw new FileStorageException("Could not store file in MinIO: " + objectKey, ex);
         }
     }
 
     /**
      * Loads a file from MinIO as a Resource.
+     * Protected by circuit breaker to prevent cascading failures.
      *
      * @param objectKey the MinIO object key
      * @return the file as a Resource
      */
+    @CircuitBreaker(name = "minioService", fallbackMethod = "loadFileAsResourceFallback")
     public Resource loadFileAsResource(String objectKey) {
         try {
             InputStream inputStream = minioClient.getObject(
@@ -139,8 +149,10 @@ public class MinioStorageService {
                             .build()
             );
 
+            log.debug("Successfully loaded file: {}", objectKey);
             return new InputStreamResource(inputStream);
         } catch (Exception ex) {
+            log.error("Failed to load file from MinIO: {}", objectKey, ex);
             throw new FileStorageException("File not found in MinIO: " + objectKey, ex);
         }
     }
@@ -148,14 +160,16 @@ public class MinioStorageService {
     /**
      * Generates a pre-signed URL for temporary file access.
      * URL is valid for a specified duration.
+     * Protected by circuit breaker to prevent cascading failures.
      *
      * @param objectKey the MinIO object key
      * @param expiryMinutes URL expiry time in minutes
      * @return pre-signed URL
      */
+    @CircuitBreaker(name = "minioService", fallbackMethod = "generatePresignedUrlFallback")
     public String generatePresignedUrl(String objectKey, int expiryMinutes) {
         try {
-            return minioClient.getPresignedObjectUrl(
+            String url = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
                             .bucket(minioProperties.getBucketName())
@@ -163,18 +177,24 @@ public class MinioStorageService {
                             .expiry(expiryMinutes, TimeUnit.MINUTES)
                             .build()
             );
+            log.debug("Successfully generated presigned URL for: {}", objectKey);
+            return url;
         } catch (Exception ex) {
+            log.error("Failed to generate presigned URL for: {}", objectKey, ex);
             throw new FileStorageException("Could not generate presigned URL: " + objectKey, ex);
         }
     }
 
     /**
      * Deletes a file from MinIO.
+     * Protected by circuit breaker to prevent cascading failures.
      *
      * @param objectKey the MinIO object key
      */
+    @CircuitBreaker(name = "minioService", fallbackMethod = "deleteFileFallback")
     public void deleteFile(String objectKey) {
         if (objectKey == null || objectKey.trim().isEmpty()) {
+            log.debug("Skipping file deletion - object key is empty");
             return;
         }
 
@@ -185,7 +205,9 @@ public class MinioStorageService {
                             .object(objectKey)
                             .build()
             );
+            log.info("Successfully deleted file: {}", objectKey);
         } catch (Exception ex) {
+            log.error("Failed to delete file from MinIO: {}", objectKey, ex);
             throw new FileStorageException("Could not delete file from MinIO: " + objectKey, ex);
         }
     }
@@ -251,5 +273,79 @@ public class MinioStorageService {
             }
         }
         return false;
+    }
+
+    // ========== Circuit Breaker Fallback Methods ==========
+
+    /**
+     * Fallback method for bucket initialization when circuit is open.
+     * Logs the failure but allows the application to start without MinIO connectivity.
+     *
+     * @param ex the exception that triggered the fallback
+     */
+    private void initializeBucketFallback(Exception ex) {
+        log.error("Circuit breaker OPEN: MinIO bucket initialization failed. " +
+                "Application will continue but file operations may fail. Error: {}", ex.getMessage());
+    }
+
+    /**
+     * Fallback method for file storage when circuit is open.
+     * Prevents cascading failures by throwing a specific exception.
+     *
+     * @param file the file that was being stored
+     * @param fileType the type of file
+     * @param applicantId the applicant ID
+     * @param ex the exception that triggered the fallback
+     * @return never returns, always throws exception
+     * @throws FileStorageException indicating the service is unavailable
+     */
+    private String storeFileFallback(MultipartFile file, String fileType, String applicantId, Exception ex) {
+        log.error("Circuit breaker OPEN: Cannot store file '{}' for applicant '{}'. MinIO service unavailable. Error: {}",
+                fileType, applicantId, ex.getMessage());
+        throw new FileStorageException("File storage service is temporarily unavailable. Please try again later.", ex);
+    }
+
+    /**
+     * Fallback method for file loading when circuit is open.
+     * Prevents cascading failures by throwing a specific exception.
+     *
+     * @param objectKey the object key that was being loaded
+     * @param ex the exception that triggered the fallback
+     * @return never returns, always throws exception
+     * @throws FileStorageException indicating the service is unavailable
+     */
+    private Resource loadFileAsResourceFallback(String objectKey, Exception ex) {
+        log.error("Circuit breaker OPEN: Cannot load file '{}'. MinIO service unavailable. Error: {}",
+                objectKey, ex.getMessage());
+        throw new FileStorageException("File retrieval service is temporarily unavailable. Please try again later.", ex);
+    }
+
+    /**
+     * Fallback method for presigned URL generation when circuit is open.
+     * Prevents cascading failures by throwing a specific exception.
+     *
+     * @param objectKey the object key for which URL was being generated
+     * @param expiryMinutes the expiry time
+     * @param ex the exception that triggered the fallback
+     * @return never returns, always throws exception
+     * @throws FileStorageException indicating the service is unavailable
+     */
+    private String generatePresignedUrlFallback(String objectKey, int expiryMinutes, Exception ex) {
+        log.error("Circuit breaker OPEN: Cannot generate presigned URL for '{}'. MinIO service unavailable. Error: {}",
+                objectKey, ex.getMessage());
+        throw new FileStorageException("URL generation service is temporarily unavailable. Please try again later.", ex);
+    }
+
+    /**
+     * Fallback method for file deletion when circuit is open.
+     * Logs the failure but does not throw exception to allow graceful degradation.
+     *
+     * @param objectKey the object key that was being deleted
+     * @param ex the exception that triggered the fallback
+     */
+    private void deleteFileFallback(String objectKey, Exception ex) {
+        log.error("Circuit breaker OPEN: Cannot delete file '{}'. MinIO service unavailable. " +
+                "File deletion will be skipped. Error: {}", objectKey, ex.getMessage());
+        // Don't throw exception - allow the application deletion to proceed even if file cleanup fails
     }
 }

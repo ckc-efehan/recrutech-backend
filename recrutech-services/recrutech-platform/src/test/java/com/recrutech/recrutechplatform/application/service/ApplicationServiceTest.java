@@ -32,6 +32,9 @@ class ApplicationServiceTest {
     @Mock
     private ApplicationRepository repository;
 
+    @Mock
+    private MinioStorageService storageService;
+
     @InjectMocks
     private ApplicationService service;
 
@@ -573,6 +576,11 @@ class ApplicationServiceTest {
         assertThat(application.getDeletedAt()).isNotNull();
         assertThat(application.getDeletedByUserId()).isEqualTo(userId);
         verify(repository).save(application);
+        
+        // Verify that files are deleted from MinIO storage
+        verify(storageService).deleteFile("applicant_coverLetter_123.pdf");
+        verify(storageService).deleteFile("applicant_resume_456.pdf");
+        verify(storageService, never()).deleteFile(null); // Portfolio is null, should not be called
     }
 
     @Test

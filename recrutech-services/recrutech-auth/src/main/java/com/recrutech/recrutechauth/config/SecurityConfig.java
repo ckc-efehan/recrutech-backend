@@ -115,6 +115,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/reset-password", "/api/auth/reset-password-confirm").permitAll()
                 .requestMatchers("/api/gdpr/info", "/api/gdpr/health").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // Swagger UI and OpenAPI documentation
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // Static resources
                 .requestMatchers("/", "/index.html", "/favicon.ico", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                 .anyRequest().authenticated())

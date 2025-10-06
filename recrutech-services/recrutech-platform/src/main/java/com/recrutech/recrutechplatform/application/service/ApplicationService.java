@@ -33,9 +33,11 @@ public class ApplicationService {
     private static final String CANNOT_MODIFY_FINALIZED_MESSAGE = "Cannot modify an application that has been finalized (ACCEPTED, REJECTED, or WITHDRAWN)";
 
     private final ApplicationRepository repository;
+    private final MinioStorageService storageService;
 
-    public ApplicationService(ApplicationRepository repository) {
+    public ApplicationService(ApplicationRepository repository, MinioStorageService storageService) {
         this.repository = repository;
+        this.storageService = storageService;
     }
 
     /**
@@ -183,6 +185,7 @@ public class ApplicationService {
 
     /**
      * Soft delete an application.
+     * Also cleans up associated files from MinIO storage to prevent resource leaks.
      */
     public void softDelete(String id, String userId) {
         UuidValidator.validateUuid(id, "id");
@@ -190,11 +193,69 @@ public class ApplicationService {
 
         Application application = findApplicationById(id);
         
+        // Clean up files from MinIO storage before deleting the application
+        deleteApplicationFiles(application);
+        
         application.setDeleted(true);
         application.setDeletedAt(LocalDateTime.now());
         application.setDeletedByUserId(userId);
         
         repository.save(application);
+    }
+
+    /**
+     * Deletes all associated files for an application from MinIO storage.
+     * Handles missing or null file paths gracefully.
+     * 
+     * @param application the application whose files should be deleted
+     */
+    private void deleteApplicationFiles(Application application) {
+        // Delete cover letter
+        if (application.getCoverLetterPath() != null) {
+            storageService.deleteFile(application.getCoverLetterPath());
+        }
+        
+        // Delete resume
+        if (application.getResumePath() != null) {
+            storageService.deleteFile(application.getResumePath());
+        }
+        
+        // Delete portfolio if it exists
+        if (application.getPortfolioPath() != null) {
+            storageService.deleteFile(application.getPortfolioPath());
+        }
+    }
+
+    /**
+     * Generates a temporary presigned URL for accessing an application document.
+     * The URL is valid for the specified duration and provides secure, temporary access
+     * without requiring authentication headers.
+     * 
+     * @param id the application ID
+     * @param documentType the type of document (coverLetter, resume, portfolio)
+     * @param expiryMinutes how long the URL should remain valid (in minutes)
+     * @return the presigned URL for the requested document
+     * @throws NotFoundException if the application or document is not found
+     * @throws ValidationException if the document type is invalid
+     */
+    @Transactional(readOnly = true)
+    public String generatePresignedUrl(String id, String documentType, int expiryMinutes) {
+        UuidValidator.validateUuid(id, "id");
+        Application application = findApplicationById(id);
+        
+        String objectKey = switch (documentType.toLowerCase()) {
+            case "coverletter", "cover-letter" -> application.getCoverLetterPath();
+            case "resume" -> application.getResumePath();
+            case "portfolio" -> application.getPortfolioPath();
+            default -> throw new ValidationException("Invalid document type: " + documentType + 
+                    ". Valid types are: coverLetter, resume, portfolio");
+        };
+        
+        if (objectKey == null || objectKey.trim().isEmpty()) {
+            throw new NotFoundException("Document not found for type: " + documentType);
+        }
+        
+        return storageService.generatePresignedUrl(objectKey, expiryMinutes);
     }
 
     /**

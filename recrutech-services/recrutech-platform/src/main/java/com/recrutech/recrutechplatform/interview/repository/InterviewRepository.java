@@ -77,7 +77,7 @@ public interface InterviewRepository extends JpaRepository<Interview, String> {
      * Find today's interviews for a specific interviewer.
      */
     @Query("SELECT i FROM Interview i WHERE i.interviewerUserId = :interviewerUserId " +
-           "AND DATE(i.scheduledAt) = DATE(:today) AND i.isDeleted = false " +
+           "AND CAST(i.scheduledAt AS date) = CAST(:today AS date) AND i.isDeleted = false " +
            "ORDER BY i.scheduledAt ASC")
     List<Interview> findTodaysInterviewsByInterviewer(
             @Param("interviewerUserId") String interviewerUserId,
@@ -94,7 +94,7 @@ public interface InterviewRepository extends JpaRepository<Interview, String> {
      * Uses native SQL for efficient existence checking.
      * This is used for proactive validation before creating an interview.
      */
-    @Query(value = "SELECT COUNT(*) > 0 FROM applications WHERE id = :applicationId AND is_deleted = false", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) > 0 FROM applications WHERE id = :applicationId AND is_deleted = 0", nativeQuery = true)
     boolean applicationExists(@Param("applicationId") String applicationId);
 
     /**

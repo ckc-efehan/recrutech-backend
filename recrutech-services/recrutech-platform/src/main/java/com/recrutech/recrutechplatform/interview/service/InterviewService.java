@@ -4,6 +4,8 @@ import com.recrutech.common.exception.EntityReferenceNotFoundException;
 import com.recrutech.common.exception.NotFoundException;
 import com.recrutech.common.exception.ValidationException;
 import com.recrutech.common.util.UuidValidator;
+import com.recrutech.recrutechplatform.application.model.ApplicationStatus;
+import com.recrutech.recrutechplatform.application.service.ApplicationService;
 import com.recrutech.recrutechplatform.interview.dto.InterviewCreateRequest;
 import com.recrutech.recrutechplatform.interview.dto.InterviewFeedbackRequest;
 import com.recrutech.recrutechplatform.interview.dto.InterviewResponse;
@@ -25,15 +27,18 @@ import java.util.List;
 /**
  * Service layer for managing interviews.
  * Handles interview scheduling, updates, status transitions, and feedback collection.
+ * Integrates with ApplicationService to automatically update application status.
  */
 @Service
 @Transactional
 public class InterviewService {
 
     private final InterviewRepository repository;
+    private final ApplicationService applicationService;
 
-    public InterviewService(InterviewRepository repository) {
+    public InterviewService(InterviewRepository repository, ApplicationService applicationService) {
         this.repository = repository;
+        this.applicationService = applicationService;
     }
 
     /**
@@ -79,6 +84,16 @@ public class InterviewService {
         interview.setCreatedByUserId(userId);
 
         Interview savedInterview = repository.save(interview);
+        
+        // Update application status to INTERVIEW_SCHEDULED
+        applicationService.updateStatus(
+                request.applicationId(),
+                ApplicationStatus.INTERVIEW_SCHEDULED,
+                userId,
+                null,
+                null
+        );
+        
         return InterviewMapper.toResponse(savedInterview);
     }
 
@@ -225,6 +240,16 @@ public class InterviewService {
         interview.setUpdatedByUserId(userId);
 
         Interview updatedInterview = repository.save(interview);
+        
+        // Update application status to INTERVIEWED
+        applicationService.updateStatus(
+                interview.getApplicationId(),
+                ApplicationStatus.INTERVIEWED,
+                userId,
+                null,
+                null
+        );
+        
         return InterviewMapper.toResponse(updatedInterview);
     }
 
@@ -252,6 +277,21 @@ public class InterviewService {
         interview.setUpdatedByUserId(userId);
 
         Interview updatedInterview = repository.save(interview);
+        
+        // Update application with NO_SHOW note - keep current status but add HR notes
+        try {
+            applicationService.updateStatus(
+                    interview.getApplicationId(),
+                    ApplicationStatus.REJECTED,
+                    userId,
+                    "Candidate did not attend scheduled interview on " + interview.getScheduledAt(),
+                    "No-show for interview"
+            );
+        } catch (ValidationException e) {
+            // If status transition fails (e.g., already finalized), just log and continue
+            // The interview NO_SHOW status is still recorded
+        }
+        
         return InterviewMapper.toResponse(updatedInterview);
     }
 

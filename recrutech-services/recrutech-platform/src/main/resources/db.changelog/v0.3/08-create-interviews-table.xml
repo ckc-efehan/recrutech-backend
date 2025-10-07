@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Platform Module - Interviews Table
+# Version: 1.0.0
+# Author: Efehan Cekic
+# Description: Creates the interviews table for managing interview scheduling and feedback
+# Dependencies: users, applications tables
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create interviews table -->
+    <changeSet id="create-interviews-table-v1.0" author="Efehan Cekic">
+        <comment>
+            Creates the interviews table for managing interview scheduling and tracking with full lifecycle support.
+        </comment>
+
+        <createTable tableName="interviews">
+            <!-- Primary Key and Base Entity Fields -->
+            <column name="id" type="char(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Core Relationship -->
+            <column name="application_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Interview Details -->
+            <column name="interview_type" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(30)" defaultValue="SCHEDULED">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Scheduling Information -->
+            <column name="scheduled_at" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+            <column name="duration_minutes" type="int"/>
+
+            <!-- Location or Meeting Details -->
+            <column name="location" type="varchar(200)"/>
+            <column name="meeting_link" type="varchar(500)"/>
+
+            <!-- Additional Information -->
+            <column name="description" type="text"/>
+            <column name="notes" type="text"/>
+
+            <!-- Interviewer Information -->
+            <column name="interviewer_user_id" type="char(36)"/>
+
+            <!-- Feedback after interview -->
+            <column name="feedback" type="text"/>
+            <column name="rating" type="int"/>
+
+            <!-- Completion tracking -->
+            <column name="completed_at" type="datetime"/>
+
+            <!-- Audit Fields -->
+            <column name="created_by_user_id" type="char(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_by_user_id" type="char(36)"/>
+            <column name="deleted_by_user_id" type="char(36)"/>
+
+            <!-- Soft Delete -->
+            <column name="is_deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deleted_at" type="datetime"/>
+        </createTable>
+
+    </changeSet>
+
+    <!-- Indexes for performance -->
+    <changeSet id="create-interviews-indexes-v1.0" author="Efehan Cekic">
+        <comment>
+            Creates indexes for efficient querying of interviews by application, status, and scheduling.
+        </comment>
+
+        <!-- Index for application's interviews -->
+        <createIndex tableName="interviews" indexName="idx_interviews_application">
+            <column name="application_id"/>
+        </createIndex>
+
+        <!-- Index for scheduled interviews -->
+        <createIndex tableName="interviews" indexName="idx_interviews_scheduled_at">
+            <column name="scheduled_at"/>
+        </createIndex>
+
+        <!-- Composite index for status and soft delete -->
+        <createIndex tableName="interviews" indexName="idx_interviews_status">
+            <column name="status"/>
+            <column name="is_deleted"/>
+        </createIndex>
+
+        <!-- Index for interviewer's interviews -->
+        <createIndex tableName="interviews" indexName="idx_interviews_interviewer">
+            <column name="interviewer_user_id"/>
+        </createIndex>
+
+        <!-- Index for soft delete filtering -->
+        <createIndex tableName="interviews" indexName="idx_interviews_is_deleted">
+            <column name="is_deleted"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Foreign keys for referential integrity -->
+    <changeSet id="create-interviews-foreign-keys-v1.0" author="Efehan Cekic">
+        <comment>
+            Creates foreign key constraints to maintain referential integrity.
+        </comment>
+
+        <addForeignKeyConstraint
+                baseTableName="interviews"
+                baseColumnNames="application_id"
+                constraintName="fk_interviews_application"
+                referencedTableName="applications"
+                referencedColumnNames="id"
+                onDelete="CASCADE"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="interviews"
+                baseColumnNames="interviewer_user_id"
+                constraintName="fk_interviews_interviewer_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="interviews"
+                baseColumnNames="created_by_user_id"
+                constraintName="fk_interviews_created_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="RESTRICT"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="interviews"
+                baseColumnNames="updated_by_user_id"
+                constraintName="fk_interviews_updated_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+                baseTableName="interviews"
+                baseColumnNames="deleted_by_user_id"
+                constraintName="fk_interviews_deleted_by_user"
+                referencedTableName="users"
+                referencedColumnNames="id"
+                onDelete="SET NULL"
+                onUpdate="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

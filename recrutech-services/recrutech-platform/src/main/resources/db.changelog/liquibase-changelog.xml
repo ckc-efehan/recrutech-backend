@@ -21,9 +21,12 @@
     <include file="/db.changelog/v0.1/05-create-job-postings-table.xml"/>
 
     <!-- Step: Create applications infrastructure -->
-    <include file="/db.changelog/v0.1/06-create-applications-table.xml"/>
+    <include file="/db.changelog/v0.2/06-create-applications-table.xml"/>
 
     <!-- Step: Migrate applications to MinIO storage -->
-    <include file="/db.changelog/v0.1/07-migrate-applications-to-minio-storage.xml"/>
+    <include file="/db.changelog/v0.2/07-migrate-applications-to-minio-storage.xml"/>
+
+    <!-- Step: Create interviews infrastructure -->
+    <include file="/db.changelog/v0.3/08-create-interviews-table.xml"/>
 
 </databaseChangeLog>

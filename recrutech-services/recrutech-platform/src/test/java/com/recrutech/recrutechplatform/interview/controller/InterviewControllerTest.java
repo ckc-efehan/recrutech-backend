@@ -298,7 +298,7 @@ class InterviewControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].id").value(INTERVIEW_ID))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.page.totalElements").value(1));
 
         verify(service).getInterviewsByApplication(eq(APPLICATION_ID), any(Pageable.class));
     }
@@ -319,7 +319,7 @@ class InterviewControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.content[0].interviewerUserId").value(INTERVIEWER_ID))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.page.totalElements").value(1));
 
         verify(service).getInterviewsByInterviewer(eq(INTERVIEWER_ID), any(Pageable.class));
     }

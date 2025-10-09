@@ -37,6 +37,9 @@ public record AuthResponse(
     @JsonProperty("userId")
     String userId,
     
+    @JsonProperty("companyId")
+    String companyId,
+    
     @JsonProperty("userContext")
     Object userContext,
     
@@ -64,13 +67,14 @@ public record AuthResponse(
      */
     public static AuthResponse createSuccessResponse(
             String accessToken, String refreshToken, long expiresIn, 
-            UserRole userRole, String userId, Object userContext) {
+            UserRole userRole, String userId, String companyId, Object userContext) {
         return AuthResponse.builder()
             .accessToken(accessToken)
             .refreshToken(refreshToken)
             .expiresIn(expiresIn)
             .userRole(userRole)
             .userId(userId)
+            .companyId(companyId)
             .userContext(userContext)
             .requiresTwoFactor(false)
             .build();

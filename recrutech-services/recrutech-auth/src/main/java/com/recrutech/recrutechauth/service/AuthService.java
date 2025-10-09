@@ -156,6 +156,9 @@ public class AuthService {
         
         // Load additional context data
         Object userContext = loadUserContext(user);
+        
+        // Extract companyId based on user role
+        String companyId = extractCompanyId(user.getRole(), userContext);
 
         // Use factory method to create success response
         return AuthResponse.createSuccessResponse(
@@ -164,6 +167,7 @@ public class AuthService {
             tokenPair.expiresIn(),
             user.getRole(),
             user.getId(),
+            companyId,
             userContext
         );
     }
@@ -379,12 +383,16 @@ public class AuthService {
         
         Object userContext = loadUserContext(user);
         
+        // Extract companyId based on user role
+        String companyId = extractCompanyId(user.getRole(), userContext);
+        
         return AuthResponse.builder()
             .accessToken(newTokenPair.accessToken())
             .refreshToken(newTokenPair.refreshToken())
             .expiresIn(newTokenPair.expiresIn())
             .userRole(user.getRole())
             .userId(user.getId())
+            .companyId(companyId)
             .userContext(userContext)
             .requiresTwoFactor(false)
             .build();
@@ -660,6 +668,28 @@ public class AuthService {
             case COMPANY_ADMIN -> companyRepository.findByAdminUserId(user.getId()).orElse(null);
             case HR -> hrEmployeeRepository.findByUserId(user.getId()).orElse(null);
             case APPLICANT -> applicantRepository.findByUserId(user.getId()).orElse(null);
+        };
+    }
+
+    private String extractCompanyId(UserRole role, Object userContext) {
+        if (userContext == null) {
+            return null;
+        }
+        
+        return switch (role) {
+            case COMPANY_ADMIN -> {
+                if (userContext instanceof Company company) {
+                    yield company.getId();
+                }
+                yield null;
+            }
+            case HR -> {
+                if (userContext instanceof HREmployee hrEmployee) {
+                    yield hrEmployee.getCompanyId();
+                }
+                yield null;
+            }
+            case APPLICANT -> null;
         };
     }
 }

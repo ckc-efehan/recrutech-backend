@@ -64,6 +64,7 @@ public class SecurityConfig {
             "https://*.recrutech.com",
             "https://app.recrutech.com",
             "http://localhost:3000", // For development
+            "http://localhost:5173", // For development (Vite)
             "http://localhost:8080"  // For development
         ));
         

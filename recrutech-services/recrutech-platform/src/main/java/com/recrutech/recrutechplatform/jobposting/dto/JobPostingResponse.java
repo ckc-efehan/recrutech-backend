@@ -1,6 +1,6 @@
-package com.recrutech.recrutechplatform.company.dto;
+package com.recrutech.recrutechplatform.jobposting.dto;
 
-import com.recrutech.recrutechplatform.company.model.JobPostingStatus;
+import com.recrutech.recrutechplatform.jobposting.model.JobPostingStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

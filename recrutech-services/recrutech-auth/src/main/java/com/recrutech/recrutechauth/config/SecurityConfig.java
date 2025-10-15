@@ -3,6 +3,7 @@ package com.recrutech.recrutechauth.config;
 import com.recrutech.recrutechauth.security.InputSanitizationFilter;
 import com.recrutech.recrutechauth.security.SecurityHeadersFilter;
 import com.recrutech.recrutechauth.security.RateLimitingFilter;
+import com.recrutech.recrutechauth.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -33,13 +34,16 @@ public class SecurityConfig {
     private final InputSanitizationFilter inputSanitizationFilter;
     private final SecurityHeadersFilter securityHeadersFilter;
     private final RateLimitingFilter rateLimitingFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(InputSanitizationFilter inputSanitizationFilter,
                          SecurityHeadersFilter securityHeadersFilter,
-                         RateLimitingFilter rateLimitingFilter) {
+                         RateLimitingFilter rateLimitingFilter,
+                         JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.inputSanitizationFilter = inputSanitizationFilter;
         this.securityHeadersFilter = securityHeadersFilter;
         this.rateLimitingFilter = rateLimitingFilter;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     /**
@@ -134,6 +138,7 @@ public class SecurityConfig {
             )
             
             // Add custom security filters in the correct order
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(inputSanitizationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(securityHeadersFilter, inputSanitizationFilter.getClass())
             .addFilterAfter(rateLimitingFilter, securityHeadersFilter.getClass());

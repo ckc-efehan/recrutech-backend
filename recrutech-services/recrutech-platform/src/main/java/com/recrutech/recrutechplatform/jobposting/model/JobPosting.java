@@ -1,4 +1,4 @@
-package com.recrutech.recrutechplatform.company.model;
+package com.recrutech.recrutechplatform.jobposting.model;
 
 import com.recrutech.common.entity.BaseEntity;
 import jakarta.persistence.*;

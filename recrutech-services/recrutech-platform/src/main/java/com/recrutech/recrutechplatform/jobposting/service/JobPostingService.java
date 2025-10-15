@@ -1,15 +1,15 @@
-package com.recrutech.recrutechplatform.company.service;
+package com.recrutech.recrutechplatform.jobposting.service;
 
 import com.recrutech.common.exception.NotFoundException;
 import com.recrutech.common.exception.ValidationException;
 import com.recrutech.common.util.UuidValidator;
-import com.recrutech.recrutechplatform.company.dto.JobPostingCreateRequest;
-import com.recrutech.recrutechplatform.company.dto.JobPostingResponse;
-import com.recrutech.recrutechplatform.company.dto.JobPostingUpdateRequest;
-import com.recrutech.recrutechplatform.company.mapper.JobPostingMapper;
-import com.recrutech.recrutechplatform.company.model.JobPosting;
-import com.recrutech.recrutechplatform.company.model.JobPostingStatus;
-import com.recrutech.recrutechplatform.company.repository.JobPostingRepository;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingCreateRequest;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingResponse;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingUpdateRequest;
+import com.recrutech.recrutechplatform.jobposting.mapper.JobPostingMapper;
+import com.recrutech.recrutechplatform.jobposting.model.JobPosting;
+import com.recrutech.recrutechplatform.jobposting.model.JobPostingStatus;
+import com.recrutech.recrutechplatform.jobposting.repository.JobPostingRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;

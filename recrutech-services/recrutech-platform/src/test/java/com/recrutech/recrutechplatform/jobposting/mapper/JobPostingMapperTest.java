@@ -1,10 +1,10 @@
-package com.recrutech.recrutechplatform.company.mapper;
+package com.recrutech.recrutechplatform.jobposting.mapper;
 
-import com.recrutech.recrutechplatform.company.dto.JobPostingCreateRequest;
-import com.recrutech.recrutechplatform.company.dto.JobPostingResponse;
-import com.recrutech.recrutechplatform.company.dto.JobPostingUpdateRequest;
-import com.recrutech.recrutechplatform.company.model.JobPosting;
-import com.recrutech.recrutechplatform.company.model.JobPostingStatus;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingCreateRequest;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingResponse;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingUpdateRequest;
+import com.recrutech.recrutechplatform.jobposting.model.JobPosting;
+import com.recrutech.recrutechplatform.jobposting.model.JobPostingStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

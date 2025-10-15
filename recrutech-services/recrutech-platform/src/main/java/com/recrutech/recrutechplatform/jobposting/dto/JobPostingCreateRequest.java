@@ -1,4 +1,4 @@
-package com.recrutech.recrutechplatform.company.dto;
+package com.recrutech.recrutechplatform.jobposting.dto;
 
 import jakarta.validation.constraints.*;
 

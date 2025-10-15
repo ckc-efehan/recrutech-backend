@@ -1,10 +1,10 @@
-package com.recrutech.recrutechplatform.company.controller;
+package com.recrutech.recrutechplatform.jobposting.controller;
 
-import com.recrutech.recrutechplatform.company.dto.JobPostingCreateRequest;
-import com.recrutech.recrutechplatform.company.dto.JobPostingResponse;
-import com.recrutech.recrutechplatform.company.dto.JobPostingUpdateRequest;
-import com.recrutech.recrutechplatform.company.model.JobPostingStatus;
-import com.recrutech.recrutechplatform.company.service.JobPostingService;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingCreateRequest;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingResponse;
+import com.recrutech.recrutechplatform.jobposting.dto.JobPostingUpdateRequest;
+import com.recrutech.recrutechplatform.jobposting.model.JobPostingStatus;
+import com.recrutech.recrutechplatform.jobposting.service.JobPostingService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

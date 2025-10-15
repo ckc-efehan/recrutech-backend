@@ -1,7 +1,7 @@
-package com.recrutech.recrutechplatform.company.repository;
+package com.recrutech.recrutechplatform.jobposting.repository;
 
-import com.recrutech.recrutechplatform.company.model.JobPosting;
-import com.recrutech.recrutechplatform.company.model.JobPostingStatus;
+import com.recrutech.recrutechplatform.jobposting.model.JobPosting;
+import com.recrutech.recrutechplatform.jobposting.model.JobPostingStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -54,11 +54,6 @@ Next run the project using the following command:
 
 It will automatically recompile when you change something.
 
-To start the platform service:
-
-```bash
-.\mvnw spring-boot:run -pl recrutech-services/recrutech-platform -Dspring-boot.run.arguments="--server.port=8081"
-```
 
 ## Contributing
 

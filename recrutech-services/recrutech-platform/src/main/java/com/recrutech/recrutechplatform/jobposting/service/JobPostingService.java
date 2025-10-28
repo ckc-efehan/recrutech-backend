@@ -44,7 +44,7 @@ public class JobPostingService {
 
         JobPosting entity = JobPostingMapper.toEntity(request);
         entity.setCompanyId(companyId);
-        entity.setCreatedByUserId(userId);
+        entity.setCreatedByAccountId(userId);
 
         JobPosting saved = repository.save(entity);
         return JobPostingMapper.toResponse(saved);
@@ -66,7 +66,7 @@ public class JobPostingService {
         JobPosting entity = findJobPostingByIdAndCompanyId(id, companyId);
 
         JobPostingMapper.updateEntity(request, entity);
-        entity.setUpdatedByUserId(userId);
+        entity.setUpdatedByAccountId(userId);
 
         return JobPostingMapper.toResponse(repository.save(entity));
     }
@@ -94,7 +94,7 @@ public class JobPostingService {
         
         entity.setStatus(JobPostingStatus.PUBLISHED);
         entity.setPublishedAt(LocalDateTime.now());
-        entity.setUpdatedByUserId(userId);
+        entity.setUpdatedByAccountId(userId);
         return JobPostingMapper.toResponse(repository.save(entity));
     }
 
@@ -108,7 +108,7 @@ public class JobPostingService {
         }
         
         entity.setStatus(JobPostingStatus.ARCHIVED);
-        entity.setUpdatedByUserId(userId);
+        entity.setUpdatedByAccountId(userId);
         return JobPostingMapper.toResponse(repository.save(entity));
     }
 
@@ -119,7 +119,7 @@ public class JobPostingService {
         
         entity.setDeleted(true);
         entity.setDeletedAt(LocalDateTime.now());
-        entity.setDeletedByUserId(userId);
+        entity.setDeletedByAccountId(userId);
         repository.save(entity);
     }
 

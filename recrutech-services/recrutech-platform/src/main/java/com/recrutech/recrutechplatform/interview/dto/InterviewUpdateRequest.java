@@ -34,7 +34,7 @@ public record InterviewUpdateRequest(
         String meetingLink,
 
         @Schema(description = "New interviewer user ID", example = "33333333-3333-3333-3333-333333333333")
-        String interviewerUserId,
+        String interviewerAccountId,
 
         @Schema(description = "Updated description of the interview", example = "System design interview")
         @Size(max = 2000, message = "description must not exceed 2000 characters")

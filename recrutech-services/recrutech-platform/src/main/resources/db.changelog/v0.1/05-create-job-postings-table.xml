@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 # Platform Module - Job Postings Table
-# Version: 1.0.0
+# Version: 1.1.0 (Phase 1 - Database Separation)
 # Author: Efehan Cekic
 # Description: Creates the job_postings table with company scoping, auditing, and soft delete
-# Dependencies: users table (for created/updated/deleted by FKs), companies table (for company_id FK)
+# Dependencies: companies table (for company_id FK)
+# Phase 1 Changes: Removed physical FKs to users table (now logical FKs to auth service)
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -30,11 +31,12 @@
             <column name="company_id" type="char(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="created_by_user_id" type="char(36)">
+            <!-- Logical FKs to auth service (no physical FK constraints) -->
+            <column name="created_by_account_id" type="char(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="updated_by_user_id" type="char(36)"/>
-            <column name="deleted_by_user_id" type="char(36)"/>
+            <column name="updated_by_account_id" type="char(36)"/>
+            <column name="deleted_by_account_id" type="char(36)"/>
 
             <!-- Content Fields -->
             <column name="title" type="varchar(200)">
@@ -82,6 +84,11 @@
 
     <!-- Foreign keys for referential integrity -->
     <changeSet id="create-job-postings-foreign-keys-v1.0" author="Efehan Cekic">
+        <comment>
+            Physical FK to companies table (within platform database).
+            Phase 1: Removed FKs to users table - these are now logical FKs to auth service.
+        </comment>
+        
         <addForeignKeyConstraint
                 baseTableName="job_postings"
                 baseColumnNames="company_id"
@@ -89,33 +96,6 @@
                 referencedTableName="companies"
                 referencedColumnNames="id"
                 onDelete="CASCADE"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="job_postings"
-                baseColumnNames="created_by_user_id"
-                constraintName="fk_job_postings_created_by_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="RESTRICT"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="job_postings"
-                baseColumnNames="updated_by_user_id"
-                constraintName="fk_job_postings_updated_by_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="SET NULL"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="job_postings"
-                baseColumnNames="deleted_by_user_id"
-                constraintName="fk_job_postings_deleted_by_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="SET NULL"
                 onUpdate="CASCADE"/>
     </changeSet>
 

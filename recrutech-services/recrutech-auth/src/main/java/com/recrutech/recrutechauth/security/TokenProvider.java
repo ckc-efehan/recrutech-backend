@@ -1,6 +1,8 @@
 package com.recrutech.recrutechauth.security;
 
+import com.recrutech.recrutechauth.model.RefreshToken;
 import com.recrutech.recrutechauth.model.User;
+import com.recrutech.recrutechauth.repository.RefreshTokenRepository;
 import com.recrutech.recrutechauth.repository.UserRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -11,11 +13,12 @@ import org.springframework.stereotype.Component;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 /**
- * Token Provider with automatic token generation capabilities.
- * Handles token creation, validation, refresh, and automatic generation.
+ * Token Provider with JWT access tokens and opaque refresh tokens.
+ * Implements proper JWT claims structure and refresh token rotation with reuse detection.
  */
 @Component
 public class TokenProvider {
@@ -25,6 +28,7 @@ public class TokenProvider {
     private final long refreshTokenValidityMs;
     private final RedisTemplate<String, String> redisTemplate;
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final String issuer;
     private final KeyRotationService keyRotationService;
     private final SecurityMonitoringService securityMonitoringService;
@@ -36,6 +40,7 @@ public class TokenProvider {
             @Value("${jwt.issuer:recrutech}") String issuer,
             RedisTemplate<String, String> redisTemplate,
             UserRepository userRepository,
+            RefreshTokenRepository refreshTokenRepository,
             KeyRotationService keyRotationService,
             SecurityMonitoringService securityMonitoringService) {
         
@@ -45,70 +50,89 @@ public class TokenProvider {
         this.issuer = issuer;
         this.redisTemplate = redisTemplate;
         this.userRepository = userRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
         this.keyRotationService = keyRotationService;
         this.securityMonitoringService = securityMonitoringService;
     }
 
     /**
-     * Creates a secure token pair (Access + Refresh) with automatic generation.
-     * If user already has valid tokens, returns existing ones.
-     * If tokens are expired or don't exist, generates new ones automatically.
+     * Creates a secure token pair (Access + Refresh).
+     * Note: Tokens are no longer stored in database, always generates new pair.
+     * Token validation and session management is handled via Redis.
      */
     public TokenPair createOrGetTokenPair(User user, String sessionId, String clientIp) {
-        // Check if user already has valid tokens
-        if (!user.needsNewToken()) {
-            return new TokenPair(
-                user.getCurrentAccessToken(), 
-                user.getCurrentRefreshToken(), 
-                Duration.between(LocalDateTime.now(), user.getTokenExpiresAt()).getSeconds()
-            );
-        }
-
-        // Generate new token pair
+        // Always generate new token pair (tokens not stored in DB anymore)
         return createTokenPair(user, sessionId, clientIp);
     }
 
     /**
-     * Creates a new secure token pair (Access + Refresh).
+     * Creates a new secure token pair (Access JWT + Opaque Refresh Token).
+     * Implements proper JWT claims and opaque refresh token with family tracking.
      */
     public TokenPair createTokenPair(User user, String sessionId, String clientIp) {
+        return createTokenPair(user, sessionId, clientIp, null, null);
+    }
+
+    /**
+     * Creates a new secure token pair with optional family ID for rotation.
+     * @param user the user
+     * @param sessionId the session ID
+     * @param clientIp the client IP
+     * @param userAgent the user agent (optional)
+     * @param familyId the family ID for rotation chain (null for new family)
+     */
+    private TokenPair createTokenPair(User user, String sessionId, String clientIp, String userAgent, String familyId) {
         Date now = new Date();
+        Date notBefore = now; // Token valid immediately
+        Date expiration = new Date(now.getTime() + accessTokenValidityMs);
+        
         String jti = UUID.randomUUID().toString(); // Unique Token ID
         
-        // Access Token
+        // Build JWT Access Token with proper claims per Phase 3 requirements
         String accessToken = Jwts.builder()
             .id(jti)
-            .subject(user.getEmail())
+            .subject(user.getId()) // Subject is userId (account ID)
             .issuer(issuer)
+            .audience().add("recrutech-platform").add("recrutech-notification").and() // Audience claim
             .issuedAt(now)
-            .expiration(new Date(now.getTime() + accessTokenValidityMs))
-            .claim("userId", user.getId())
-            .claim("role", user.getRole().getAuthority())
-            .claim("sessionId", sessionId)
-            .claim("clientIp", clientIp)
-            .claim("tokenType", "ACCESS")
-            .claim("twoFactorVerified", user.isTwoFactorEnabled())
+            .notBefore(notBefore) // Not before claim
+            .expiration(expiration)
+            .claim("roles", Collections.singletonList(user.getRole().getAuthority())) // Roles array
+            .claim("scope", determineScopes(user)) // Permission scopes
+            .claim("tenant", "default") // Multi-tenancy support
+            .claim("email", user.getEmail())
+            .claim("emailVerified", user.isEmailVerified())
+            .claim("mfaVerified", user.isTwoFactorEnabled())
             .signWith(Keys.hmacShaKeyFor(keyRotationService.getCurrentSigningKey().getBytes()))
             .compact();
 
-        // Refresh Token
-        String refreshJti = UUID.randomUUID().toString();
-        String refreshToken = Jwts.builder()
-            .id(refreshJti)
-            .subject(user.getEmail())
-            .issuer(issuer)
-            .issuedAt(now)
-            .expiration(new Date(now.getTime() + refreshTokenValidityMs))
-            .claim("userId", user.getId())
-            .claim("sessionId", sessionId)
-            .claim("tokenType", "REFRESH")
-            .claim("accessTokenId", jti)
-            .signWith(Keys.hmacShaKeyFor(keyRotationService.getCurrentSigningKey().getBytes()))
-            .compact();
-
-        // Store tokens in Redis for blacklisting and session management
+        // Generate Opaque Refresh Token (UUID, not JWT)
+        String refreshToken = UUID.randomUUID().toString();
+        String effectiveFamilyId = familyId != null ? familyId : UUID.randomUUID().toString();
+        
+        // Create RefreshToken entity for Redis storage
+        LocalDateTime issuedAt = LocalDateTime.now();
+        LocalDateTime expiresAt = issuedAt.plus(refreshTokenValidityMs, ChronoUnit.MILLIS);
+        long ttlSeconds = refreshTokenValidityMs / 1000;
+        
+        RefreshToken rt = new RefreshToken(
+            refreshToken,
+            user.getId(),
+            effectiveFamilyId,
+            issuedAt,
+            expiresAt,
+            false, // not revoked
+            null, // not replaced yet
+            clientIp,
+            userAgent,
+            ttlSeconds
+        );
+        
+        // Store refresh token in Redis
+        refreshTokenRepository.save(rt);
+        
+        // Store access token JTI in Redis for blacklisting capability
         storeTokenInRedis(jti, accessToken, Duration.ofSeconds(accessTokenValidityMs / 1000));
-        storeTokenInRedis(refreshJti, refreshToken, Duration.ofSeconds(refreshTokenValidityMs / 1000));
         
         // Store session mapping
         redisTemplate.opsForValue().set(
@@ -117,11 +141,6 @@ public class TokenProvider {
             Duration.ofSeconds(refreshTokenValidityMs / 1000)
         );
 
-        // Update user with new tokens
-        LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(accessTokenValidityMs / 1000);
-        user.updateTokens(accessToken, refreshToken, expiresAt);
-        userRepository.save(user);
-
         // Log token creation for security monitoring
         securityMonitoringService.logTokenCreation(user.getId(), "ACCESS", clientIp, "TokenProvider");
         securityMonitoringService.logTokenCreation(user.getId(), "REFRESH", clientIp, "TokenProvider");
@@ -129,44 +148,142 @@ public class TokenProvider {
         return new TokenPair(accessToken, refreshToken, accessTokenValidityMs / 1000);
     }
 
+    /**
+     * Determine permission scopes based on user role.
+     * @param user the user
+     * @return list of scopes
+     */
+    private List<String> determineScopes(User user) {
+        List<String> scopes = new ArrayList<>();
+        
+        switch (user.getRole()) {
+            case COMPANY_ADMIN:
+                scopes.add("company:read");
+                scopes.add("company:write");
+                scopes.add("company:manage");
+                scopes.add("hr:read");
+                scopes.add("hr:write");
+                scopes.add("hr:manage");
+                scopes.add("application:read");
+                scopes.add("application:write");
+                scopes.add("application:manage");
+                scopes.add("jobposting:read");
+                scopes.add("jobposting:write");
+                scopes.add("jobposting:manage");
+                scopes.add("interview:read");
+                scopes.add("interview:write");
+                scopes.add("interview:manage");
+                break;
+            case HR:
+                scopes.add("company:read");
+                scopes.add("application:read");
+                scopes.add("application:write");
+                scopes.add("jobposting:read");
+                scopes.add("jobposting:write");
+                scopes.add("interview:read");
+                scopes.add("interview:write");
+                scopes.add("interview:manage");
+                break;
+            case APPLICANT:
+                scopes.add("profile:read");
+                scopes.add("profile:write");
+                scopes.add("application:create");
+                scopes.add("application:read:own");
+                scopes.add("jobposting:read");
+                scopes.add("interview:read:own");
+                break;
+        }
+        
+        return scopes;
+    }
+
 
 
     /**
-     * Refresh token with rotation and automatic generation.
+     * Refresh token with rotation and reuse detection.
+     * Implements proper refresh token rotation per Phase 3 requirements:
+     * - Opaque refresh tokens (UUID, not JWT)
+     * - Token family tracking
+     * - Automatic reuse detection and family revocation
      */
     public TokenPair refreshToken(String refreshToken, String clientIp) {
-        try {
-            Claims claims = parseToken(refreshToken);
-            if (claims == null) {
-                throw new IllegalArgumentException("Invalid refresh token");
-            }
+        return refreshToken(refreshToken, clientIp, null);
+    }
 
-            String tokenType = claims.get("tokenType", String.class);
-            if (!"REFRESH".equals(tokenType)) {
-                throw new IllegalArgumentException("Invalid token type");
-            }
-
-            String userId = claims.get("userId", String.class);
-            String sessionId = claims.get("sessionId", String.class);
-            
-            // Blacklist old access token
-            String oldAccessTokenId = claims.get("accessTokenId", String.class);
-            if (oldAccessTokenId != null) {
-                blacklistTokenById(oldAccessTokenId);
-            }
-
-            // Blacklist old refresh token
-            blacklistToken(refreshToken);
-
-            // Load user and create new token pair
-            User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
-            return createTokenPair(user, sessionId, clientIp);
-
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid refresh token");
+    /**
+     * Refresh token with rotation and reuse detection.
+     * @param refreshToken the opaque refresh token
+     * @param clientIp the client IP address
+     * @param userAgent the user agent (optional)
+     * @return new token pair
+     */
+    public TokenPair refreshToken(String refreshToken, String clientIp, String userAgent) {
+        // 1. Look up refresh token in Redis
+        Optional<RefreshToken> rtOpt = refreshTokenRepository.findById(refreshToken);
+        
+        if (rtOpt.isEmpty()) {
+            securityMonitoringService.logSecurityEvent("UNKNOWN", "REFRESH_TOKEN_NOT_FOUND", clientIp, "Unknown or expired refresh token");
+            throw new IllegalArgumentException("Invalid or expired refresh token");
         }
+        
+        RefreshToken rt = rtOpt.get();
+        
+        // 2. Check if token is expired
+        if (rt.getExpiresAt().isBefore(LocalDateTime.now())) {
+            refreshTokenRepository.deleteById(refreshToken);
+            securityMonitoringService.logSecurityEvent(rt.getUserId(), "REFRESH_TOKEN_EXPIRED", clientIp, "Expired refresh token used");
+            throw new IllegalArgumentException("Refresh token expired");
+        }
+        
+        // 3. REUSE DETECTION: Check if token was already used (has replacedBy value)
+        if (rt.getReplacedBy() != null) {
+            // Token reuse detected! Revoke entire family
+            securityMonitoringService.logSecurityEvent(rt.getUserId(), "REFRESH_TOKEN_REUSE_DETECTED", clientIp, 
+                "Refresh token reuse detected - revoking family: " + rt.getFamilyId());
+            
+            // Revoke all tokens in this family
+            revokeTokenFamily(rt.getFamilyId());
+            
+            throw new SecurityException("Refresh token reuse detected - session terminated");
+        }
+        
+        // 4. Check if token is revoked
+        if (rt.isRevoked()) {
+            securityMonitoringService.logSecurityEvent(rt.getUserId(), "REVOKED_TOKEN_USED", clientIp, "Revoked refresh token used");
+            throw new IllegalArgumentException("Refresh token has been revoked");
+        }
+        
+        // 5. Load user
+        User user = userRepository.findById(rt.getUserId())
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // 6. Create new token pair (with same familyId for rotation chain)
+        String sessionId = UUID.randomUUID().toString(); // New session for new token pair
+        TokenPair newTokenPair = createTokenPair(user, sessionId, clientIp, userAgent, rt.getFamilyId());
+        
+        // 7. Mark old refresh token as replaced
+        rt.setReplacedBy(newTokenPair.refreshToken());
+        refreshTokenRepository.save(rt);
+        
+        // 8. Log successful rotation
+        securityMonitoringService.logTokenRotation(user.getId(), rt.getToken(), newTokenPair.refreshToken(), clientIp);
+        
+        return newTokenPair;
+    }
+    
+    /**
+     * Revokes all refresh tokens in a token family.
+     * Called when token reuse is detected.
+     * @param familyId the family ID
+     */
+    private void revokeTokenFamily(String familyId) {
+        List<RefreshToken> familyTokens = refreshTokenRepository.findByFamilyId(familyId);
+        for (RefreshToken token : familyTokens) {
+            token.setRevoked(true);
+            refreshTokenRepository.save(token);
+        }
+        securityMonitoringService.logSecurityEvent("SYSTEM", "TOKEN_FAMILY_REVOKED", "SYSTEM", 
+            "Revoked token family: " + familyId + " (" + familyTokens.size() + " tokens)");
     }
 
     /**

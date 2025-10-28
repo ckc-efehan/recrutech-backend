@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Applicants Table Creation - Phase 1 Database Separation
+# Version: 1.0.0
+# Author: Phase 1 Migration
+# Description: Creates the applicants table in the platform database
+# 
+# This table stores applicant profile data (job seekers).
+# Uses accountId (not userId) to reference the auth service user account.
+# This is a logical foreign key - no physical FK constraint across databases.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="01-create-applicants-table" author="phase1-migration">
+        <comment>
+            Create applicants table for job seeker profiles.
+            Domain entity that belongs in platform database.
+            References auth service via accountId (logical FK).
+        </comment>
+
+        <createTable tableName="applicants">
+            <!-- Primary Key -->
+            <column name="id" type="CHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Logical Foreign Key to auth.users.id -->
+            <column name="account_id" type="CHAR(36)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- Profile Information -->
+            <column name="phone_number" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="date_of_birth" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="linkedin_profile" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="resume_url" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="current_location" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+
+            <!-- Status Tracking -->
+            <column name="profile_complete" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Audit Fields -->
+            <column name="created_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Indexes for Performance -->
+        <createIndex indexName="idx_applicants_account_id" tableName="applicants">
+            <column name="account_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_applicants_profile_complete" tableName="applicants">
+            <column name="profile_complete"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_applicants_profile_complete" tableName="applicants"/>
+            <dropIndex indexName="idx_applicants_account_id" tableName="applicants"/>
+            <dropTable tableName="applicants"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

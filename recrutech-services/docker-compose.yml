@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  # PostgreSQL for Auth Service (Identity and Credentials)
+  postgres:
+    image: postgres:16-alpine
+    container_name: recrutech-postgres
+    environment:
+      POSTGRES_DB: recrutech_auth
+      POSTGRES_USER: recrutech_user
+      POSTGRES_PASSWORD: recrutech_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recrutech_user -d recrutech_auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MySQL for Platform Service (Domain Data)
   mysql:
     image: mysql:8.0
     container_name: recrutech-mysql
@@ -13,6 +33,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
     restart: unless-stopped
     command: --default-authentication-plugin=mysql_native_password
 
@@ -73,6 +94,7 @@ services:
       retries: 3
 
 volumes:
+  postgres_data:
   mysql_data:
   redis_data:
   minio_data:

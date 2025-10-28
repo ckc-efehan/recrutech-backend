@@ -5,6 +5,7 @@ import com.recrutech.recrutechauth.repository.*;
 import com.recrutech.recrutechauth.security.*;
 import com.recrutech.recrutechauth.validator.PasswordValidator;
 import com.recrutech.recrutechauth.kafka.EmailEventProducer;
+import com.recrutech.recrutechauth.kafka.AuthEventPublisherService;
 import com.recrutech.recrutechauth.dto.auth.*;
 import com.recrutech.recrutechauth.dto.registration.*;
 import com.recrutech.recrutechauth.exception.BadCredentialsException;
@@ -20,7 +21,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -34,36 +34,30 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final CompanyRepository companyRepository;
-    private final HREmployeeRepository hrEmployeeRepository;
-    private final ApplicantRepository applicantRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidator passwordValidator;
     private final TokenProvider tokenProvider;
     private final SecurityService securityService;
     private final InputSanitizationService inputSanitizationService;
     private final EmailEventProducer emailEventProducer;
+    private final AuthEventPublisherService authEventPublisherService;
 
     public AuthService(UserRepository userRepository,
-                      CompanyRepository companyRepository,
-                      HREmployeeRepository hrEmployeeRepository,
-                      ApplicantRepository applicantRepository,
                       PasswordEncoder passwordEncoder,
                       PasswordValidator passwordValidator,
                       TokenProvider tokenProvider,
                       SecurityService securityService,
                       InputSanitizationService inputSanitizationService,
-                      EmailEventProducer emailEventProducer) {
+                      EmailEventProducer emailEventProducer,
+                      AuthEventPublisherService authEventPublisherService) {
         this.userRepository = userRepository;
-        this.companyRepository = companyRepository;
-        this.hrEmployeeRepository = hrEmployeeRepository;
-        this.applicantRepository = applicantRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidator = passwordValidator;
         this.tokenProvider = tokenProvider;
         this.securityService = securityService;
         this.inputSanitizationService = inputSanitizationService;
         this.emailEventProducer = emailEventProducer;
+        this.authEventPublisherService = authEventPublisherService;
     }
 
     /**
@@ -154,11 +148,8 @@ public class AuthService {
         // Create or get token pair (automatic generation)
         TokenPair tokenPair = tokenProvider.createOrGetTokenPair(user, sessionId, clientIp);
         
-        // Load additional context data
-        Object userContext = loadUserContext(user);
-        
-        // Extract companyId based on user role
-        String companyId = extractCompanyId(user.getRole(), userContext);
+        // Phase 2: Domain data (userContext, companyId) is in platform service, not available here
+        // Clients should query platform service for domain data using userId from token
 
         // Use factory method to create success response
         return AuthResponse.createSuccessResponse(
@@ -167,14 +158,15 @@ public class AuthService {
             tokenPair.expiresIn(),
             user.getRole(),
             user.getId(),
-            companyId,
-            userContext
+            null,  // companyId not available (domain data in platform)
+            null   // userContext not available (domain data in platform)
         );
     }
 
     /**
-     * Company registration with automatic admin and HR user creation.
-     * Creates both admin and HR users from single input with auto-generated emails.
+     * Company registration - Phase 2 refactored.
+     * Creates only admin User account and publishes UserRegisteredEvent.
+     * Platform service consumes event to create Company domain entity.
      */
     @Transactional
     public CompanyRegistrationResponse registerCompany(CompanyRegistrationRequest request) {
@@ -182,27 +174,15 @@ public class AuthService {
         // Business rule validation
         request.validateBusinessRules();
         
-        // Validate unique business email and telephone
-        if (companyRepository.existsByBusinessEmail(request.businessEmail())) {
-            throw new ConflictException("Business email already exists");
-        }
-        if (companyRepository.existsByTelephone(request.telephone())) {
-            throw new ConflictException("Telephone number already exists");
-        }
-        
-        // Generate admin and HR emails automatically
+        // Generate admin email automatically
         String adminEmail = request.generateAdminEmail();
-        String hrEmail = request.generateHREmail();
         
-        // Validate that generated emails don't already exist
+        // Validate that generated email doesn't already exist
         if (userRepository.existsByEmail(adminEmail)) {
             throw new ConflictException("Admin email already exists: " + adminEmail);
         }
-        if (userRepository.existsByEmail(hrEmail)) {
-            throw new ConflictException("HR email already exists: " + hrEmail);
-        }
         
-        // Sanitize input fields using unused InputSanitizationService methods
+        // Sanitize input fields
         String sanitizedCompanyName = inputSanitizationService.sanitizeInput(request.name());
         String sanitizedLocation = inputSanitizationService.sanitizeInput(request.location());
         String sanitizedFirstName = inputSanitizationService.sanitizeInput(request.firstName());
@@ -210,10 +190,9 @@ public class AuthService {
         String sanitizedBusinessEmail = inputSanitizationService.sanitizeInput(request.businessEmail());
         String sanitizedTelephone = inputSanitizationService.sanitizeInput(request.telephone());
         
-        // Log registration details for audit purposes (use encoded data for safe output)
+        // Log registration details for audit purposes
         System.out.println("[DEBUG_LOG] Company registration - Name: " + inputSanitizationService.encodeForHTML(sanitizedCompanyName) + 
-                          ", Admin email: " + inputSanitizationService.encodeForHTML(adminEmail) + 
-                          ", HR email: " + inputSanitizationService.encodeForHTML(hrEmail));
+                          ", Admin email: " + inputSanitizationService.encodeForHTML(adminEmail));
         
         // Create admin user with generated email and sanitized data
         User adminUser = createUser(
@@ -224,48 +203,29 @@ public class AuthService {
             UserRole.COMPANY_ADMIN
         );
 
-        // Create company with sanitized data
-        Company company = new Company();
-        company.setName(sanitizedCompanyName);
-        company.setLocation(sanitizedLocation);
-        company.setBusinessEmail(sanitizedBusinessEmail);
-        company.setContactFirstName(sanitizedFirstName);
-        company.setContactLastName(sanitizedLastName);
-        company.setTelephone(sanitizedTelephone);
-        company.setAdminUserId(adminUser.getId());
-        company.setVerificationToken(tokenProvider.generateSecureToken());
-        company.setVerificationExpiry(LocalDateTime.now().plusHours(24));
-        
-        company = companyRepository.save(company);
-
-        // Automatically create HR user with generated email and sanitized data
-        User hrUser = createUser(
-            hrEmail,
-            request.password(),
-            sanitizedFirstName,
-            sanitizedLastName,
-            UserRole.HR
+        // Prepare company context data as JSON for platform service
+        String companyContext = String.format(
+            "{\"companyName\":\"%s\",\"location\":\"%s\",\"businessEmail\":\"%s\"," +
+            "\"contactFirstName\":\"%s\",\"contactLastName\":\"%s\",\"telephone\":\"%s\"}",
+            sanitizedCompanyName, sanitizedLocation, sanitizedBusinessEmail,
+            sanitizedFirstName, sanitizedLastName, sanitizedTelephone
         );
-
-        // Create HR employee record
-        HREmployee hrEmployee = new HREmployee();
-        hrEmployee.setUserId(hrUser.getId());
-        hrEmployee.setCompanyId(company.getId());
-        hrEmployee.setDepartment("Human Resources");
-        hrEmployee.setPosition("HR Manager");
-        hrEmployee.setHireDate(LocalDate.now());
-        hrEmployeeRepository.save(hrEmployee);
+        
+        // Publish UserRegisteredEvent for platform service to create Company entity
+        authEventPublisherService.publishUserRegisteredEvent(adminUser, companyContext);
 
         return CompanyRegistrationResponse.createSuccessResponse(
-            company.getId(),
+            null,  // companyId not available immediately (created async by platform)
             adminUser.getId(),
-            hrUser.getId(),
-            null  // No temporary password needed since both users use the provided password
+            null,  // hrUserId not created in this flow anymore
+            null
         );
     }
 
     /**
-     * HR user registration.
+     * HR user registration - Phase 2 refactored.
+     * Creates only User account and publishes UserRegisteredEvent.
+     * Platform service consumes event to create HREmployee domain entity.
      */
     @Transactional
     public UserRegistrationResponse registerHR(HRRegistrationRequest request) {
@@ -273,7 +233,7 @@ public class AuthService {
         // Business rule validation
         request.validateBusinessRules();
         
-        // Sanitize input fields using unused InputSanitizationService methods
+        // Sanitize input fields
         String sanitizedFirstName = inputSanitizationService.sanitizeInput(request.firstName());
         String sanitizedLastName = inputSanitizationService.sanitizeInput(request.lastName());
         String sanitizedEmail = inputSanitizationService.sanitizeInput(request.email());
@@ -281,14 +241,11 @@ public class AuthService {
         String sanitizedPosition = inputSanitizationService.sanitizeInput(request.position());
         String sanitizedEmployeeId = inputSanitizationService.sanitizeInput(request.employeeId());
         
-        // Log HR registration details (use encoded data for safe output)
+        // Log HR registration details
         String fullName = request.getFullName();
         boolean isSelfRegistration = request.isSelfRegistration();
         System.out.println("[DEBUG_LOG] HR registration - Full name: " + inputSanitizationService.encodeForHTML(fullName) + 
                           ", Self-registration: " + isSelfRegistration + ", Email: " + inputSanitizationService.encodeForHTML(sanitizedEmail));
-        
-        // Validate company access
-        validateCompanyAccess(request.companyId());
         
         // Create HR user with sanitized data
         User hrUser = createUser(
@@ -299,20 +256,22 @@ public class AuthService {
             UserRole.HR
         );
 
-        // Create HR employee record with sanitized data
-        HREmployee hrEmployee = new HREmployee();
-        hrEmployee.setUserId(hrUser.getId());
-        hrEmployee.setCompanyId(request.companyId());
-        hrEmployee.setDepartment(sanitizedDepartment);
-        hrEmployee.setPosition(sanitizedPosition);
-        hrEmployee.setEmployeeId(sanitizedEmployeeId);
-        hrEmployeeRepository.save(hrEmployee);
+        // Prepare HR employee context data as JSON for platform service
+        String hrContext = String.format(
+            "{\"companyId\":\"%s\",\"department\":\"%s\",\"position\":\"%s\",\"employeeId\":\"%s\"}",
+            request.companyId(), sanitizedDepartment, sanitizedPosition, sanitizedEmployeeId
+        );
+        
+        // Publish UserRegisteredEvent for platform service to create HREmployee entity
+        authEventPublisherService.publishUserRegisteredEvent(hrUser, hrContext);
 
         return UserRegistrationResponse.createSuccessResponse(hrUser.getId(), "hr");
     }
 
     /**
-     * Applicant registration.
+     * Applicant registration - Phase 2 refactored.
+     * Creates only User account and publishes UserRegisteredEvent.
+     * Platform service consumes event to create Applicant domain entity.
      */
     @Transactional
     public UserRegistrationResponse registerApplicant(ApplicantRegistrationRequest request) {
@@ -320,14 +279,14 @@ public class AuthService {
         // Business rule validation
         request.validateBusinessRules();
         
-        // Sanitize input fields using unused InputSanitizationService methods
+        // Sanitize input fields
         String sanitizedFirstName = inputSanitizationService.sanitizeInput(request.personalInfo().firstName());
         String sanitizedLastName = inputSanitizationService.sanitizeInput(request.personalInfo().lastName());
         String sanitizedEmail = inputSanitizationService.sanitizeInput(request.personalInfo().email());
         String sanitizedPhoneNumber = inputSanitizationService.sanitizeInput(request.personalInfo().phoneNumber());
         String sanitizedCurrentLocation = inputSanitizationService.sanitizeInput(request.personalInfo().currentLocation());
         
-        // Log applicant registration details (use encoded data for safe output)
+        // Log applicant registration details
         String fullName = request.getFullName();
         boolean hasExperience = request.hasExperience();
         String email = request.getEmail();
@@ -343,12 +302,14 @@ public class AuthService {
             UserRole.APPLICANT
         );
 
-        // Create applicant profile with sanitized data
-        Applicant applicant = new Applicant();
-        applicant.setUserId(applicantUser.getId());
-        applicant.setPhoneNumber(sanitizedPhoneNumber);
-        applicant.setCurrentLocation(sanitizedCurrentLocation);
-        applicantRepository.save(applicant);
+        // Prepare applicant profile context data as JSON for platform service
+        String applicantContext = String.format(
+            "{\"phoneNumber\":\"%s\",\"currentLocation\":\"%s\"}",
+            sanitizedPhoneNumber, sanitizedCurrentLocation
+        );
+        
+        // Publish UserRegisteredEvent for platform service to create Applicant entity
+        authEventPublisherService.publishUserRegisteredEvent(applicantUser, applicantContext);
 
         return UserRegistrationResponse.createSuccessResponse(applicantUser.getId(), "applicant");
     }
@@ -381,10 +342,7 @@ public class AuthService {
             }
         }
         
-        Object userContext = loadUserContext(user);
-        
-        // Extract companyId based on user role
-        String companyId = extractCompanyId(user.getRole(), userContext);
+        // Phase 2: Domain data is in platform service, not available here
         
         return AuthResponse.builder()
             .accessToken(newTokenPair.accessToken())
@@ -392,25 +350,23 @@ public class AuthService {
             .expiresIn(newTokenPair.expiresIn())
             .userRole(user.getRole())
             .userId(user.getId())
-            .companyId(companyId)
-            .userContext(userContext)
+            .companyId(null)  // Domain data in platform service
+            .userContext(null)  // Domain data in platform service
             .requiresTwoFactor(false)
             .build();
     }
 
     /**
      * Logout user and invalidate tokens.
+     * Phase 2: Tokens are managed in Redis, not in User entity.
      */
     @Transactional
     public void logout(String accessToken, String userId) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found"));
         
-        // Blacklist current tokens
+        // Blacklist access token (tokens are in Redis, not DB)
         tokenProvider.blacklistToken(accessToken);
-        if (user.getCurrentRefreshToken() != null) {
-            tokenProvider.blacklistToken(user.getCurrentRefreshToken());
-        }
         
         // Invalidate session
         if (user.getCurrentSessionId() != null) {
@@ -418,8 +374,8 @@ public class AuthService {
             securityService.removeActiveSession(userId, user.getCurrentSessionId());
         }
         
-        // Clear user tokens
-        user.clearTokens();
+        // Clear session
+        user.clearSession();
         userRepository.save(user);
     }
 
@@ -644,8 +600,8 @@ public class AuthService {
         user.setPasswordResetToken(null);
         user.setPasswordResetExpiry(null);
         
-        // Clear all existing tokens to force re-login
-        user.clearTokens();
+        // Clear session to force re-login (tokens are in Redis, not DB)
+        user.clearSession();
         
         // Reset failed login attempts
         user.setFailedLoginAttempts(0);
@@ -658,38 +614,7 @@ public class AuthService {
                           inputSanitizationService.encodeForHTML(user.getEmail()));
     }
 
-    private void validateCompanyAccess(String companyId) {
-        companyRepository.findById(companyId)
-            .orElseThrow(() -> new NotFoundException("Company not found"));
-    }
-
-    private Object loadUserContext(User user) {
-        return switch (user.getRole()) {
-            case COMPANY_ADMIN -> companyRepository.findByAdminUserId(user.getId()).orElse(null);
-            case HR -> hrEmployeeRepository.findByUserId(user.getId()).orElse(null);
-            case APPLICANT -> applicantRepository.findByUserId(user.getId()).orElse(null);
-        };
-    }
-
-    private String extractCompanyId(UserRole role, Object userContext) {
-        if (userContext == null) {
-            return null;
-        }
-        
-        return switch (role) {
-            case COMPANY_ADMIN -> {
-                if (userContext instanceof Company company) {
-                    yield company.getId();
-                }
-                yield null;
-            }
-            case HR -> {
-                if (userContext instanceof HREmployee hrEmployee) {
-                    yield hrEmployee.getCompanyId();
-                }
-                yield null;
-            }
-            case APPLICANT -> null;
-        };
-    }
+    // Phase 2: Helper methods removed - domain data is in platform service
+    // validateCompanyAccess, loadUserContext, and extractCompanyId are no longer needed
+    // Auth service only manages identity, not domain entities
 }

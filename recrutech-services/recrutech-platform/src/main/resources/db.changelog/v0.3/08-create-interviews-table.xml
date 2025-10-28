@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 # Platform Module - Interviews Table
-# Version: 1.0.0
+# Version: 1.1.0 (Phase 1 - Database Separation)
 # Author: Efehan Cekic
 # Description: Creates the interviews table for managing interview scheduling and feedback
-# Dependencies: users, applications tables
+# Dependencies: applications table
+# Phase 1 Changes: Removed physical FKs to users table (now logical FKs to auth service)
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -53,8 +54,8 @@
             <column name="description" type="text"/>
             <column name="notes" type="text"/>
 
-            <!-- Interviewer Information -->
-            <column name="interviewer_user_id" type="char(36)"/>
+            <!-- Interviewer Information - Logical FK to auth service -->
+            <column name="interviewer_account_id" type="char(36)"/>
 
             <!-- Feedback after interview -->
             <column name="feedback" type="text"/>
@@ -63,12 +64,12 @@
             <!-- Completion tracking -->
             <column name="completed_at" type="datetime"/>
 
-            <!-- Audit Fields -->
-            <column name="created_by_user_id" type="char(36)">
+            <!-- Audit Fields - Logical FKs to auth service -->
+            <column name="created_by_account_id" type="char(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="updated_by_user_id" type="char(36)"/>
-            <column name="deleted_by_user_id" type="char(36)"/>
+            <column name="updated_by_account_id" type="char(36)"/>
+            <column name="deleted_by_account_id" type="char(36)"/>
 
             <!-- Soft Delete -->
             <column name="is_deleted" type="boolean" defaultValueBoolean="false">
@@ -103,7 +104,7 @@
 
         <!-- Index for interviewer's interviews -->
         <createIndex tableName="interviews" indexName="idx_interviews_interviewer">
-            <column name="interviewer_user_id"/>
+            <column name="interviewer_account_id"/>
         </createIndex>
 
         <!-- Index for soft delete filtering -->
@@ -115,7 +116,8 @@
     <!-- Foreign keys for referential integrity -->
     <changeSet id="create-interviews-foreign-keys-v1.0" author="Efehan Cekic">
         <comment>
-            Creates foreign key constraints to maintain referential integrity.
+            Physical FK to applications table (within platform database).
+            Phase 1: Removed FKs to users table - these are now logical FKs to auth service.
         </comment>
 
         <addForeignKeyConstraint
@@ -125,42 +127,6 @@
                 referencedTableName="applications"
                 referencedColumnNames="id"
                 onDelete="CASCADE"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="interviews"
-                baseColumnNames="interviewer_user_id"
-                constraintName="fk_interviews_interviewer_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="SET NULL"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="interviews"
-                baseColumnNames="created_by_user_id"
-                constraintName="fk_interviews_created_by_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="RESTRICT"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="interviews"
-                baseColumnNames="updated_by_user_id"
-                constraintName="fk_interviews_updated_by_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="SET NULL"
-                onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-                baseTableName="interviews"
-                baseColumnNames="deleted_by_user_id"
-                constraintName="fk_interviews_deleted_by_user"
-                referencedTableName="users"
-                referencedColumnNames="id"
-                onDelete="SET NULL"
                 onUpdate="CASCADE"/>
     </changeSet>
 

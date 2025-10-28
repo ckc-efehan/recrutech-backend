@@ -36,9 +36,9 @@ public final class ApplicationMapper {
                 entity.getRejectionReason(),
                 entity.isDeleted(),
                 entity.getCreatedAt(),
-                entity.getCreatedByUserId(),
-                entity.getUpdatedByUserId(),
-                entity.getDeletedByUserId(),
+                entity.getCreatedByAccountId(),
+                entity.getUpdatedByAccountId(),
+                entity.getDeletedByAccountId(),
                 entity.getDeletedAt()
         );
     }

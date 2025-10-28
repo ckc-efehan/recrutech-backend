@@ -56,9 +56,9 @@ public class Interview extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String notes; // Internal notes about the interview
     
-    // Interviewer information (optional)
-    @Column(columnDefinition = "CHAR(36)")
-    private String interviewerUserId; // FK to users.id
+    // Interviewer information (optional) - Logical FK to auth service
+    @Column(name = "interviewer_account_id", columnDefinition = "CHAR(36)")
+    private String interviewerAccountId; // Logical FK to auth service users.id
     
     // Feedback after interview
     @Column(columnDefinition = "TEXT")
@@ -70,12 +70,12 @@ public class Interview extends BaseEntity {
     // Completion tracking
     private LocalDateTime completedAt; // When interview was completed
     
-    // Audit fields
-    @Column(nullable = false, columnDefinition = "CHAR(36)")
-    private String createdByUserId; // FK to users.id (HR who created interview)
+    // Audit fields - Logical FKs to auth service
+    @Column(name = "created_by_account_id", nullable = false, columnDefinition = "CHAR(36)")
+    private String createdByAccountId; // Logical FK to auth service users.id (HR who created interview)
     
-    @Column(columnDefinition = "CHAR(36)")
-    private String updatedByUserId; // FK to users.id (who updated interview)
+    @Column(name = "updated_by_account_id", columnDefinition = "CHAR(36)")
+    private String updatedByAccountId; // Logical FK to auth service users.id (who updated interview)
     
     // Soft delete
     @Column(nullable = false)
@@ -83,8 +83,8 @@ public class Interview extends BaseEntity {
     
     private LocalDateTime deletedAt;
     
-    @Column(columnDefinition = "CHAR(36)")
-    private String deletedByUserId; // FK to users.id
+    @Column(name = "deleted_by_account_id", columnDefinition = "CHAR(36)")
+    private String deletedByAccountId; // Logical FK to auth service users.id
 
     @PrePersist
     public void prePersist() {

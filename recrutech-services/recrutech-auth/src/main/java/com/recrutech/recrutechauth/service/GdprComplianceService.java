@@ -13,38 +13,35 @@ import java.util.List;
 
 /**
  * GDPR Compliance Service for handling data protection requirements.
+ * Phase 2 Refactored: Handles only User identity data (auth service responsibility).
+ * 
  * Implements:
- * - Right to Deletion (Art. 17 GDPR)
- * - Right to Data Portability (Art. 20 GDPR)
- * - Right to Rectification (Art. 16 GDPR)
+ * - Right to Deletion (Art. 17 GDPR) - User identity data only
+ * - Right to Data Portability (Art. 20 GDPR) - User identity data only
+ * - Right to Rectification (Art. 16 GDPR) - User identity data only
  * - Audit Logging for data processing activities
- * - Data retention policies
+ * 
+ * IMPORTANT: Full GDPR compliance requires coordination with platform service
+ * for domain data (Applicant, Company, HREmployee). Platform service should
+ * consume AccountDisabledEvent to handle domain data deletion.
  */
 @Service
 @Transactional
 public class GdprComplianceService {
 
     private final UserRepository userRepository;
-    private final CompanyRepository companyRepository;
-    private final HREmployeeRepository hrEmployeeRepository;
-    private final ApplicantRepository applicantRepository;
     private final AuditLogService auditLogService;
 
     public GdprComplianceService(
             UserRepository userRepository,
-            CompanyRepository companyRepository,
-            HREmployeeRepository hrEmployeeRepository,
-            ApplicantRepository applicantRepository,
             AuditLogService auditLogService) {
         this.userRepository = userRepository;
-        this.companyRepository = companyRepository;
-        this.hrEmployeeRepository = hrEmployeeRepository;
-        this.applicantRepository = applicantRepository;
         this.auditLogService = auditLogService;
     }
 
     /**
-     * Right to Deletion (Art. 17 GDPR) - Delete all user data
+     * Right to Deletion (Art. 17 GDPR) - Delete User identity data only.
+     * Phase 2: Domain data deletion must be coordinated with platform service.
      */
     public DeletionResponse deleteUserData(String userId, DeletionRequest request) {
         User user = userRepository.findById(userId)
@@ -55,26 +52,19 @@ public class GdprComplianceService {
             "User requested data deletion", request.reason());
 
         try {
-            // Delete role-specific data first
-            switch (user.getRole()) {
-                case COMPANY_ADMIN -> deleteCompanyAdminData(userId);
-                case HR -> deleteHREmployeeData(userId);
-                case APPLICANT -> deleteApplicantData(userId);
-            }
-
-            // Anonymize user data instead of hard delete for audit trail
+            // Anonymize user identity data instead of hard delete for audit trail
             anonymizeUserData(user);
             userRepository.save(user);
 
             auditLogService.logDataProcessing(userId, "DATA_DELETION_COMPLETED", 
-                "User data successfully deleted/anonymized", null);
+                "User identity data successfully anonymized", null);
 
             return DeletionResponse.builder()
                 .userId(userId)
                 .success(true)
                 .deletionDate(LocalDateTime.now())
                 .status("COMPLETED")
-                .message("All personal data has been deleted or anonymized")
+                .message("User identity data has been anonymized. Domain data deletion requires platform service coordination.")
                 .build();
 
         } catch (Exception e) {
@@ -85,7 +75,8 @@ public class GdprComplianceService {
     }
 
     /**
-     * Right to Data Portability (Art. 20 GDPR) - Export user data
+     * Right to Data Portability (Art. 20 GDPR) - Export User identity data only.
+     * Phase 2: Domain data export must be coordinated with platform service.
      */
     public DataExportResponse exportUserData(String userId) {
         User user = userRepository.findById(userId)
@@ -95,22 +86,17 @@ public class GdprComplianceService {
             "User requested data export", null);
 
         try {
-            DataExportResponse.DataExportResponseBuilder responseBuilder = DataExportResponse.builder()
+            DataExportResponse response = DataExportResponse.builder()
                 .userId(userId)
                 .exportDate(LocalDateTime.now())
-                .personalData(buildPersonalDataExport(user));
-
-            // Add role-specific data
-            switch (user.getRole()) {
-                case COMPANY_ADMIN -> responseBuilder.companyData(exportCompanyData(userId));
-                case HR -> responseBuilder.hrData(exportHRData(userId));
-                case APPLICANT -> responseBuilder.applicantData(exportApplicantData(userId));
-            }
-
-            DataExportResponse response = responseBuilder.build();
+                .personalData(buildPersonalDataExport(user))
+                .companyData(null)  // Domain data in platform service
+                .hrData(null)  // Domain data in platform service
+                .applicantData(null)  // Domain data in platform service
+                .build();
 
             auditLogService.logDataProcessing(userId, "DATA_EXPORT_COMPLETED", 
-                "User data export completed", null);
+                "User identity data export completed", null);
 
             return response;
 
@@ -122,7 +108,8 @@ public class GdprComplianceService {
     }
 
     /**
-     * Right to Rectification (Art. 16 GDPR) - Update user data
+     * Right to Rectification (Art. 16 GDPR) - Update User identity data only.
+     * Phase 2: Domain data rectification must be coordinated with platform service.
      */
     public RectificationResponse rectifyUserData(String userId, RectificationRequest request) {
         User user = userRepository.findById(userId)
@@ -132,27 +119,22 @@ public class GdprComplianceService {
             "User requested data rectification", request.toString());
 
         try {
-            // Update personal data
+            // Update User identity personal data only
             if (request.personalData() != null) {
                 updatePersonalData(user, (PersonalDataUpdate) request.personalData());
-            }
-
-            // Update role-specific data
-            if (request.roleSpecificData() != null) {
-                updateRoleSpecificData(userId, user.getRole(), request.roleSpecificData());
             }
 
             userRepository.save(user);
 
             auditLogService.logDataProcessing(userId, "DATA_RECTIFICATION_COMPLETED", 
-                "User data rectification completed", null);
+                "User identity data rectification completed", null);
 
             return RectificationResponse.builder()
                 .userId(userId)
                 .success(true)
                 .rectificationDate(LocalDateTime.now())
                 .status("COMPLETED")
-                .message("Personal data has been updated successfully")
+                .message("User identity data has been updated successfully. Domain data updates require platform service coordination.")
                 .build();
 
         } catch (Exception e) {
@@ -174,24 +156,12 @@ public class GdprComplianceService {
         return ProcessingActivitiesResponse.createSuccessResponse(userId, activities);
     }
 
-    // Private helper methods
+    // Private helper methods - Phase 2: Only User identity data operations
 
-    private void deleteCompanyAdminData(String userId) {
-        companyRepository.findByAdminUserId(userId).ifPresent(company -> {
-            // Anonymize company data or transfer ownership
-            company.setAdminUserId(null);
-            companyRepository.save(company);
-        });
-    }
-
-    private void deleteHREmployeeData(String userId) {
-        hrEmployeeRepository.findByUserId(userId).ifPresent(hrEmployeeRepository::delete);
-    }
-
-    private void deleteApplicantData(String userId) {
-        applicantRepository.findByUserId(userId).ifPresent(applicantRepository::delete);
-    }
-
+    /**
+     * Anonymize User identity data for GDPR compliance.
+     * Phase 2: Session cleared instead of tokens (tokens are in Redis).
+     */
     private void anonymizeUserData(User user) {
         user.setEmail("anonymized_" + user.getId() + "@deleted.local");
         user.setFirstName("DELETED");
@@ -199,9 +169,12 @@ public class GdprComplianceService {
         user.setPassword("ANONYMIZED");
         user.setEnabled(false);
         user.setEmailVerified(false);
-        user.clearTokens();
+        user.clearSession();  // Phase 2: clearSession instead of clearTokens
     }
 
+    /**
+     * Build personal data export for User identity information.
+     */
     private PersonalDataExport buildPersonalDataExport(User user) {
         return PersonalDataExport.builder()
             .email(user.getEmail())
@@ -214,40 +187,9 @@ public class GdprComplianceService {
             .build();
     }
 
-    private CompanyDataExport exportCompanyData(String userId) {
-        return companyRepository.findByAdminUserId(userId)
-            .map(company -> CompanyDataExport.builder()
-                .name(company.getName())
-                .location(company.getLocation())
-                .businessEmail(company.getBusinessEmail())
-                .telephone(company.getTelephone())
-                .createdAt(company.getCreatedAt())
-                .build())
-            .orElse(null);
-    }
-
-    private HRDataExport exportHRData(String userId) {
-        return hrEmployeeRepository.findByUserId(userId)
-            .map(hr -> HRDataExport.builder()
-                .department(hr.getDepartment())
-                .position(hr.getPosition())
-                .employeeId(hr.getEmployeeId())
-                .companyId(hr.getCompanyId())
-                .createdAt(hr.getCreatedAt())
-                .build())
-            .orElse(null);
-    }
-
-    private ApplicantDataExport exportApplicantData(String userId) {
-        return applicantRepository.findByUserId(userId)
-            .map(applicant -> ApplicantDataExport.builder()
-                .phoneNumber(applicant.getPhoneNumber())
-                .currentLocation(applicant.getCurrentLocation())
-                .createdAt(applicant.getCreatedAt())
-                .build())
-            .orElse(null);
-    }
-
+    /**
+     * Update User identity personal data.
+     */
     private void updatePersonalData(User user, PersonalDataUpdate personalData) {
         if (personalData.firstName() != null) {
             user.setFirstName(personalData.firstName());
@@ -258,38 +200,5 @@ public class GdprComplianceService {
         if (personalData.email() != null) {
             user.setEmail(personalData.email());
         }
-    }
-
-    private void updateRoleSpecificData(String userId, UserRole role, Object roleSpecificData) {
-        switch (role) {
-            case HR -> updateHRData(userId, (HRDataUpdate) roleSpecificData);
-            case APPLICANT -> updateApplicantData(userId, (ApplicantDataUpdate) roleSpecificData);
-            case COMPANY_ADMIN -> updateCompanyData(userId, (CompanyDataUpdate) roleSpecificData);
-        }
-    }
-
-    private void updateHRData(String userId, HRDataUpdate hrData) {
-        hrEmployeeRepository.findByUserId(userId).ifPresent(hr -> {
-            if (hrData.department() != null) hr.setDepartment(hrData.department());
-            if (hrData.position() != null) hr.setPosition(hrData.position());
-            hrEmployeeRepository.save(hr);
-        });
-    }
-
-    private void updateApplicantData(String userId, ApplicantDataUpdate applicantData) {
-        applicantRepository.findByUserId(userId).ifPresent(applicant -> {
-            if (applicantData.phoneNumber() != null) applicant.setPhoneNumber(applicantData.phoneNumber());
-            if (applicantData.currentLocation() != null) applicant.setCurrentLocation(applicantData.currentLocation());
-            applicantRepository.save(applicant);
-        });
-    }
-
-    private void updateCompanyData(String userId, CompanyDataUpdate companyData) {
-        companyRepository.findByAdminUserId(userId).ifPresent(company -> {
-            if (companyData.name() != null) company.setName(companyData.name());
-            if (companyData.location() != null) company.setLocation(companyData.location());
-            if (companyData.telephone() != null) company.setTelephone(companyData.telephone());
-            companyRepository.save(company);
-        });
     }
 }

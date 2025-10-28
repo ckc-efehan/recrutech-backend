@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# HR Employees Table Creation - Phase 1 Database Separation
+# Version: 1.0.0
+# Author: Phase 1 Migration
+# Description: Creates the hr_employees table in the platform database
+# 
+# This table stores HR employee organizational data.
+# Uses accountId (not userId) to reference the auth service user account (logical FK).
+# Uses companyId to reference companies table (physical FK within platform database).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="03-create-hr-employees-table" author="phase1-migration">
+        <comment>
+            Create hr_employees table for HR employee organizational data.
+            Domain entity that belongs in platform database.
+            References auth service via accountId (logical FK).
+            References companies via companyId (physical FK).
+        </comment>
+
+        <createTable tableName="hr_employees">
+            <!-- Primary Key -->
+            <column name="id" type="CHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Logical Foreign Key to auth.users.id (HR role) -->
+            <column name="account_id" type="CHAR(36)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- Physical Foreign Key to companies.id -->
+            <column name="company_id" type="CHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- HR Employee Information -->
+            <column name="department" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="position" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="hire_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="employee_id" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+
+            <!-- Status -->
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Audit Fields -->
+            <column name="created_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Physical Foreign Key Constraint to companies table -->
+        <addForeignKeyConstraint
+            constraintName="fk_hr_employees_company"
+            baseTableName="hr_employees"
+            baseColumnNames="company_id"
+            referencedTableName="companies"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <!-- Indexes for Performance -->
+        <createIndex indexName="idx_hr_employees_account_id" tableName="hr_employees">
+            <column name="account_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_hr_employees_company_id" tableName="hr_employees">
+            <column name="company_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_hr_employees_active" tableName="hr_employees">
+            <column name="active"/>
+        </createIndex>
+
+        <createIndex indexName="idx_hr_employees_company_active" tableName="hr_employees">
+            <column name="company_id"/>
+            <column name="active"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_hr_employees_company_active" tableName="hr_employees"/>
+            <dropIndex indexName="idx_hr_employees_active" tableName="hr_employees"/>
+            <dropIndex indexName="idx_hr_employees_company_id" tableName="hr_employees"/>
+            <dropIndex indexName="idx_hr_employees_account_id" tableName="hr_employees"/>
+            <dropForeignKeyConstraint baseTableName="hr_employees" constraintName="fk_hr_employees_company"/>
+            <dropTable tableName="hr_employees"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

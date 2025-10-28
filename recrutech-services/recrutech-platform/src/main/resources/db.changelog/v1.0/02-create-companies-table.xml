@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Companies Table Creation - Phase 1 Database Separation
+# Version: 1.0.0
+# Author: Phase 1 Migration
+# Description: Creates the companies table in the platform database
+# 
+# This table stores company/employer information.
+# Uses adminAccountId (not adminUserId) to reference the auth service user account.
+# This is a logical foreign key - no physical FK constraint across databases.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="02-create-companies-table" author="phase1-migration">
+        <comment>
+            Create companies table for employer/business entities.
+            Domain entity that belongs in platform database.
+            References auth service via adminAccountId (logical FK).
+        </comment>
+
+        <createTable tableName="companies">
+            <!-- Primary Key -->
+            <column name="id" type="CHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Company Information -->
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="location" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="business_email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- Contact Information -->
+            <column name="contact_first_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="contact_last_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="telephone" type="VARCHAR(20)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- Logical Foreign Key to auth.users.id (COMPANY_ADMIN role) -->
+            <column name="admin_account_id" type="CHAR(36)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- Verification Status -->
+            <column name="verified" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="verification_token" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="verification_expiry" type="DATETIME">
+                <constraints nullable="true"/>
+            </column>
+
+            <!-- Audit Fields -->
+            <column name="created_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Indexes for Performance -->
+        <createIndex indexName="idx_companies_admin_account_id" tableName="companies">
+            <column name="admin_account_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_companies_business_email" tableName="companies">
+            <column name="business_email"/>
+        </createIndex>
+
+        <createIndex indexName="idx_companies_verified" tableName="companies">
+            <column name="verified"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_companies_verified" tableName="companies"/>
+            <dropIndex indexName="idx_companies_business_email" tableName="companies"/>
+            <dropIndex indexName="idx_companies_admin_account_id" tableName="companies"/>
+            <dropTable tableName="companies"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

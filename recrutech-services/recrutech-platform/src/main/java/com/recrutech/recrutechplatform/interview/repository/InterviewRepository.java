@@ -38,7 +38,7 @@ public interface InterviewRepository extends JpaRepository<Interview, String> {
     /**
      * Find all interviews for a specific interviewer.
      */
-    Page<Interview> findAllByInterviewerUserIdAndIsDeletedFalse(String interviewerUserId, Pageable pageable);
+    Page<Interview> findAllByInterviewerAccountIdAndIsDeletedFalse(String interviewerAccountId, Pageable pageable);
 
     /**
      * Find all interviews by status.
@@ -65,22 +65,22 @@ public interface InterviewRepository extends JpaRepository<Interview, String> {
     /**
      * Find upcoming interviews for a specific interviewer.
      */
-    @Query("SELECT i FROM Interview i WHERE i.interviewerUserId = :interviewerUserId " +
+    @Query("SELECT i FROM Interview i WHERE i.interviewerAccountId = :interviewerAccountId " +
            "AND i.scheduledAt >= :from AND i.status = 'SCHEDULED' " +
            "AND i.isDeleted = false ORDER BY i.scheduledAt ASC")
     List<Interview> findUpcomingInterviewsByInterviewer(
-            @Param("interviewerUserId") String interviewerUserId,
+            @Param("interviewerAccountId") String interviewerAccountId,
             @Param("from") LocalDateTime from
     );
 
     /**
      * Find today's interviews for a specific interviewer.
      */
-    @Query("SELECT i FROM Interview i WHERE i.interviewerUserId = :interviewerUserId " +
+    @Query("SELECT i FROM Interview i WHERE i.interviewerAccountId = :interviewerAccountId " +
            "AND CAST(i.scheduledAt AS date) = CAST(:today AS date) AND i.isDeleted = false " +
            "ORDER BY i.scheduledAt ASC")
     List<Interview> findTodaysInterviewsByInterviewer(
-            @Param("interviewerUserId") String interviewerUserId,
+            @Param("interviewerAccountId") String interviewerAccountId,
             @Param("today") LocalDateTime today
     );
 

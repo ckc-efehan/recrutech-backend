@@ -1,24 +1,31 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--
 # Recrutech Authentication Service - Database Schema
-# Version: 1.0.0
+# Version: 1.1.0 (Phase 1 - Database Separation)
 # Author: Efehan Cekic
 # Description: Master changelog file for the Recrutech authentication service database schema
 # 
-# This file orchestrates the creation of all database tables and constraints
-# in the proper dependency order to ensure referential integrity.
+# This file orchestrates the creation of all authentication-related database tables.
+# Auth service is the single source of truth for identity and credentials ONLY.
+#
+# Phase 1 Change: Removed domain tables (companies, hr_employees, applicants).
+# These tables now belong in the platform service database as they are domain entities,
+# not authentication/identity data.
 #
 # Schema Overview:
 # - Core Authentication: Users table with comprehensive security features
-# - Company Management: Companies table for business entities
-# - HR Management: HR employees table linking users to companies
-# - Applicant Management: Applicants table for job seekers
+# - Session Management: Handled via Redis (not database tables)
+# - Refresh Tokens: Stored in Redis (not database tables)
+# - Audit Logs: Future addition for security monitoring
 #
-# Dependency Order:
-# 1. users (base table, no dependencies)
-# 2. companies (depends on users for admin_user_id)
-# 3. hr_employees (depends on users and companies)
-# 4. applicants (depends on users)
+# Auth Service Responsibilities:
+# - User registration and authentication
+# - Password management
+# - Email verification
+# - Two-factor authentication (2FA)
+# - Account lockout and security policies
+# - JWT token creation and validation
+# - Refresh token rotation
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -27,29 +34,34 @@
 
     <!-- 
     ========================================
-    VERSION 1.0 - INITIAL SCHEMA CREATION
+    VERSION 1.0 - AUTHENTICATION TABLES
     ========================================
     -->
     
     <!-- Step 1: Create core authentication infrastructure -->
     <include file="/db.changelog/v0.1/01-create-users-table.xml"/>
+
+    <!-- 
+    ========================================
+    PHASE 1 NOTES
+    ========================================
+    Removed domain table includes (Phase 1 - Database Separation):
+    - 02-create-companies-table.xml (moved to platform service)
+    - 03-create-hr-employees-table.xml (moved to platform service)
+    - 04-create-applicants-table.xml (moved to platform service)
     
-    <!-- Step 2: Create company management infrastructure -->
-    <include file="/db.changelog/v0.1/02-create-companies-table.xml"/>
-    
-    <!-- Step 3: Create HR management infrastructure -->
-    <include file="/db.changelog/v0.1/03-create-hr-employees-table.xml"/>
-    
-    <!-- Step 4: Create applicant management infrastructure -->
-    <include file="/db.changelog/v0.1/04-create-applicants-table.xml"/>
+    These are domain entities and belong in the platform database,
+    not the authentication database. Platform service will reference
+    user accounts via accountId (logical foreign key).
+    -->
 
     <!-- 
     ========================================
     FUTURE VERSIONS
     ========================================
     Future schema changes should be added here with proper versioning:
-    - v1.1: Additional indexes or constraints
-    - v1.2: New tables or columns
+    - v1.1: Audit logs table for security monitoring
+    - v1.2: MFA devices table (WebAuthn support)
     - v2.0: Major schema changes
     -->
 

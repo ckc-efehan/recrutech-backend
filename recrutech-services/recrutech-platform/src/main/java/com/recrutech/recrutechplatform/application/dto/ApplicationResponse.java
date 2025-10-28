@@ -24,9 +24,9 @@ public record ApplicationResponse(
         String rejectionReason,
         boolean isDeleted,
         LocalDateTime createdAt,
-        String createdByUserId,
-        String updatedByUserId,
-        String deletedByUserId,
+        String createdByAccountId,
+        String updatedByAccountId,
+        String deletedByAccountId,
         LocalDateTime deletedAt
 ) {
 }

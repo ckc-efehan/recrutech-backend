@@ -29,12 +29,12 @@ public class Application extends BaseEntity {
     @Column(nullable = false, columnDefinition = "CHAR(36)")
     private String jobPostingId; // FK to job_postings.id
     
-    // Audit fields
-    @Column(nullable = false, columnDefinition = "CHAR(36)")
-    private String createdByUserId; // FK to users.id (applicant's user)
+    // Audit fields - Logical FKs to auth service
+    @Column(name = "created_by_account_id", nullable = false, columnDefinition = "CHAR(36)")
+    private String createdByAccountId; // Logical FK to auth service users.id (applicant's account)
     
-    @Column(columnDefinition = "CHAR(36)")
-    private String updatedByUserId; // FK to users.id (HR who updated status)
+    @Column(name = "updated_by_account_id", columnDefinition = "CHAR(36)")
+    private String updatedByAccountId; // Logical FK to auth service users.id (HR who updated status)
     
     // Application content - PDF document paths
     @Column(length = 500)
@@ -74,8 +74,8 @@ public class Application extends BaseEntity {
     
     private LocalDateTime deletedAt;
     
-    @Column(columnDefinition = "CHAR(36)")
-    private String deletedByUserId; // FK to users.id
+    @Column(name = "deleted_by_account_id", columnDefinition = "CHAR(36)")
+    private String deletedByAccountId; // Logical FK to auth service users.id
 
     @PrePersist
     public void prePersist() {

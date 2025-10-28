@@ -26,14 +26,15 @@ public class JobPosting extends BaseEntity {
     @Column(nullable = false, columnDefinition = "CHAR(36)")
     private String companyId; // FK to companies.id
 
-    @Column(nullable = false, columnDefinition = "CHAR(36)")
-    private String createdByUserId; // FK to users.id
+    // Audit fields - Logical FKs to auth service
+    @Column(name = "created_by_account_id", nullable = false, columnDefinition = "CHAR(36)")
+    private String createdByAccountId; // Logical FK to auth service users.id
 
-    @Column(columnDefinition = "CHAR(36)")
-    private String updatedByUserId; // FK to users.id
+    @Column(name = "updated_by_account_id", columnDefinition = "CHAR(36)")
+    private String updatedByAccountId; // Logical FK to auth service users.id
 
-    @Column(columnDefinition = "CHAR(36)")
-    private String deletedByUserId; // FK to users.id
+    @Column(name = "deleted_by_account_id", columnDefinition = "CHAR(36)")
+    private String deletedByAccountId; // Logical FK to auth service users.id
 
     // Content
     @Column(nullable = false, length = 200)

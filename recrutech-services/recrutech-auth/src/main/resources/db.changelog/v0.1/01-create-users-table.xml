@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 # Authentication Core Module - Users Table
-# Version: 1.0.0
+# Version: 1.1.0 (PostgreSQL Migration)
 # Author: Efehan Cekic
 # Description: Creates the core users table with comprehensive authentication and security features
+# Database: PostgreSQL (migrated from MySQL)
 # Dependencies: None (base table)
+# Phase 2 Changes: Removed token storage columns (tokens now in Redis)
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -26,10 +28,10 @@
         
         <createTable tableName="users">
             <!-- Primary Key and Base Entity Fields -->
-            <column name="id" type="char(36)">
+            <column name="id" type="varchar(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="created_at" type="datetime">
+            <column name="created_at" type="timestamp">
                 <constraints nullable="false"/>
             </column>
             
@@ -60,19 +62,19 @@
             
             <!-- Email Verification System -->
             <column name="email_verification_token" type="varchar(255)"/>
-            <column name="email_verification_expiry" type="datetime"/>
+            <column name="email_verification_expiry" type="timestamp"/>
             
             <!-- Security and Account Protection -->
             <column name="failed_login_attempts" type="int" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
-            <column name="last_failed_login" type="datetime"/>
-            <column name="account_locked_until" type="datetime"/>
+            <column name="last_failed_login" type="timestamp"/>
+            <column name="account_locked_until" type="timestamp"/>
             
             <!-- Password Management -->
             <column name="password_reset_token" type="varchar(255)"/>
-            <column name="password_reset_expiry" type="datetime"/>
-            <column name="last_password_change" type="datetime"/>
+            <column name="password_reset_expiry" type="timestamp"/>
+            <column name="last_password_change" type="timestamp"/>
             
             <!-- Two-Factor Authentication -->
             <column name="two_factor_secret" type="varchar(255)"/>
@@ -81,13 +83,10 @@
             </column>
             <column name="backup_codes" type="text"/>
             
-            <!-- Session and Token Management -->
+            <!-- Session Management (Phase 2: Tokens moved to Redis) -->
             <column name="current_session_id" type="varchar(255)"/>
-            <column name="last_login_at" type="datetime"/>
+            <column name="last_login_at" type="timestamp"/>
             <column name="last_login_ip" type="varchar(45)"/>
-            <column name="current_access_token" type="text"/>
-            <column name="current_refresh_token" type="text"/>
-            <column name="token_expires_at" type="datetime"/>
         </createTable>
     </changeSet>
 

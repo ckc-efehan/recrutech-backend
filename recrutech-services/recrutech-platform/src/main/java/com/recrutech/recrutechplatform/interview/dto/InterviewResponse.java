@@ -42,7 +42,7 @@ public record InterviewResponse(
         String notes,
         
         @Schema(description = "ID of the user conducting the interview", example = "22222222-2222-2222-2222-222222222222")
-        String interviewerUserId,
+        String interviewerAccountId,
         
         @Schema(description = "Interviewer's feedback (populated after interview completion)", example = "Strong technical skills demonstrated")
         String feedback,
@@ -54,13 +54,13 @@ public record InterviewResponse(
         LocalDateTime completedAt,
         
         @Schema(description = "ID of the user who created the interview", example = "33333333-3333-3333-3333-333333333333")
-        String createdByUserId,
+        String createdByAccountId,
         
         @Schema(description = "ID of the user who last updated the interview", example = "33333333-3333-3333-3333-333333333333")
-        String updatedByUserId,
+        String updatedByAccountId,
         
         @Schema(description = "ID of the user who deleted/cancelled the interview", example = "33333333-3333-3333-3333-333333333333")
-        String deletedByUserId,
+        String deletedByAccountId,
         
         @Schema(description = "Flag indicating if the interview has been cancelled/deleted", example = "false")
         boolean isDeleted,

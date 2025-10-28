@@ -72,9 +72,9 @@ public final class JobPostingMapper {
                 entity.getExpiresAt(),
                 entity.isDeleted(),
                 entity.getCreatedAt(),
-                entity.getCreatedByUserId(),
-                entity.getUpdatedByUserId(),
-                entity.getDeletedByUserId(),
+                entity.getCreatedByAccountId(),
+                entity.getUpdatedByAccountId(),
+                entity.getDeletedByAccountId(),
                 entity.getDeletedAt()
         );
     }

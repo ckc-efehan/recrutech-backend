@@ -60,11 +60,11 @@ public class InterviewService {
         }
 
         // Validate interviewer exists if provided
-        if (request.interviewerUserId() != null) {
-            validateIds(request.interviewerUserId());
-            if (!repository.userExists(request.interviewerUserId())) {
+        if (request.interviewerAccountId() != null) {
+            validateIds(request.interviewerAccountId());
+            if (!repository.userExists(request.interviewerAccountId())) {
                 throw new EntityReferenceNotFoundException(
-                        "User not found with id: " + request.interviewerUserId()
+                        "User not found with id: " + request.interviewerAccountId()
                 );
             }
         }
@@ -77,11 +77,11 @@ public class InterviewService {
         interview.setInterviewType(request.interviewType());
         interview.setLocation(request.location());
         interview.setMeetingLink(request.meetingLink());
-        interview.setInterviewerUserId(request.interviewerUserId());
+        interview.setInterviewerAccountId(request.interviewerAccountId());
         interview.setDescription(request.description());
         interview.setNotes(request.notes());
         interview.setStatus(InterviewStatus.SCHEDULED);
-        interview.setCreatedByUserId(userId);
+        interview.setCreatedByAccountId(userId);
 
         Interview savedInterview = repository.save(interview);
         
@@ -133,14 +133,14 @@ public class InterviewService {
         if (request.meetingLink() != null) {
             interview.setMeetingLink(request.meetingLink());
         }
-        if (request.interviewerUserId() != null) {
-            validateIds(request.interviewerUserId());
-            if (!repository.userExists(request.interviewerUserId())) {
+        if (request.interviewerAccountId() != null) {
+            validateIds(request.interviewerAccountId());
+            if (!repository.userExists(request.interviewerAccountId())) {
                 throw new EntityReferenceNotFoundException(
-                        "User not found with id: " + request.interviewerUserId()
+                        "User not found with id: " + request.interviewerAccountId()
                 );
             }
-            interview.setInterviewerUserId(request.interviewerUserId());
+            interview.setInterviewerAccountId(request.interviewerAccountId());
         }
         if (request.description() != null) {
             interview.setDescription(request.description());
@@ -149,7 +149,7 @@ public class InterviewService {
             interview.setNotes(request.notes());
         }
 
-        interview.setUpdatedByUserId(userId);
+        interview.setUpdatedByAccountId(userId);
 
         Interview updatedInterview = repository.save(interview);
         return InterviewMapper.toResponse(updatedInterview);
@@ -170,7 +170,7 @@ public class InterviewService {
         interview.setStatus(InterviewStatus.CANCELLED);
         interview.setDeleted(true);
         interview.setDeletedAt(LocalDateTime.now());
-        interview.setDeletedByUserId(userId);
+        interview.setDeletedByAccountId(userId);
 
         repository.save(interview);
     }
@@ -212,7 +212,7 @@ public class InterviewService {
     @Transactional(readOnly = true)
     public Page<InterviewResponse> getInterviewsByInterviewer(String interviewerId, Pageable pageable) {
         validateIds(interviewerId);
-        return repository.findAllByInterviewerUserIdAndIsDeletedFalse(interviewerId, pageable)
+        return repository.findAllByInterviewerAccountIdAndIsDeletedFalse(interviewerId, pageable)
                 .map(InterviewMapper::toResponse);
     }
 
@@ -237,7 +237,7 @@ public class InterviewService {
 
         interview.setStatus(InterviewStatus.COMPLETED);
         interview.setCompletedAt(LocalDateTime.now());
-        interview.setUpdatedByUserId(userId);
+        interview.setUpdatedByAccountId(userId);
 
         Interview updatedInterview = repository.save(interview);
         
@@ -274,7 +274,7 @@ public class InterviewService {
 
         interview.setStatus(InterviewStatus.NO_SHOW);
         interview.setCompletedAt(LocalDateTime.now());
-        interview.setUpdatedByUserId(userId);
+        interview.setUpdatedByAccountId(userId);
 
         Interview updatedInterview = repository.save(interview);
         
@@ -317,7 +317,7 @@ public class InterviewService {
 
         interview.setFeedback(request.feedback());
         interview.setRating(request.rating());
-        interview.setUpdatedByUserId(userId);
+        interview.setUpdatedByAccountId(userId);
 
         Interview updatedInterview = repository.save(interview);
         return InterviewMapper.toResponse(updatedInterview);

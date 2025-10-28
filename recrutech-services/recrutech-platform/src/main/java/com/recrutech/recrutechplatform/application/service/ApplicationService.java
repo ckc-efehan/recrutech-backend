@@ -69,7 +69,7 @@ public class ApplicationService {
         Application application = new Application();
         application.setApplicantId(applicantId);
         application.setJobPostingId(jobPostingId);
-        application.setCreatedByUserId(userId);
+        application.setCreatedByAccountId(userId);
         application.setCoverLetterPath(coverLetterPath);
         application.setResumePath(resumePath);
         application.setPortfolioPath(portfolioPath);
@@ -141,7 +141,7 @@ public class ApplicationService {
         validateStatusTransition(application.getStatus(), newStatus);
 
         application.setStatus(newStatus);
-        application.setUpdatedByUserId(userId);
+        application.setUpdatedByAccountId(userId);
         
         if (hrNotes != null) {
             application.setHrNotes(hrNotes);
@@ -177,7 +177,7 @@ public class ApplicationService {
         }
 
         application.setStatus(ApplicationStatus.WITHDRAWN);
-        application.setUpdatedByUserId(userId);
+        application.setUpdatedByAccountId(userId);
         application.setFinalizedAt(LocalDateTime.now());
 
         return repository.save(application);
@@ -198,7 +198,7 @@ public class ApplicationService {
         
         application.setDeleted(true);
         application.setDeletedAt(LocalDateTime.now());
-        application.setDeletedByUserId(userId);
+        application.setDeletedByAccountId(userId);
         
         repository.save(application);
     }

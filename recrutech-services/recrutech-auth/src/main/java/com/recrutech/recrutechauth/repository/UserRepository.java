@@ -25,22 +25,6 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
 
     /**
-     * Find users with expired tokens that need cleanup.
-     * @param now current timestamp
-     * @return list of users with expired tokens
-     */
-    @Query("SELECT u FROM User u WHERE u.tokenExpiresAt < :now AND u.currentAccessToken IS NOT NULL")
-    List<User> findUsersWithExpiredTokens(@Param("now") LocalDateTime now);
-
-    /**
-     * Find users who need new tokens (no tokens or expired tokens).
-     * @param now current timestamp
-     * @return list of users who need new tokens
-     */
-    @Query("SELECT u FROM User u WHERE u.currentAccessToken IS NULL OR u.currentRefreshToken IS NULL OR u.tokenExpiresAt < :now")
-    List<User> findUsersNeedingNewTokens(@Param("now") LocalDateTime now);
-
-    /**
      * Check if email exists in the system.
      * @param email the email address
      * @return true if email exists, false otherwise

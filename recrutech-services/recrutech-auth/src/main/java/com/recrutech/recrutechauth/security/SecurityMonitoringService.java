@@ -128,6 +128,40 @@ public class SecurityMonitoringService {
     }
 
     /**
+     * Log generic security event.
+     * Used for various security-related events that don't fit specific categories.
+     */
+    public void logSecurityEvent(String userId, String eventType, String clientIp, String details) {
+        String eventKey = "security_events:" + eventType + ":" + System.currentTimeMillis();
+        String eventData = String.format(
+            "{\"event\":\"%s\",\"userId\":\"%s\",\"details\":\"%s\",\"ip\":\"%s\",\"timestamp\":\"%s\"}", 
+            eventType, userId, details, clientIp, LocalDateTime.now()
+        );
+        
+        redisTemplate.opsForValue().set(eventKey, eventData, Duration.ofDays(30));
+        updateDailyMetric("security_events");
+    }
+
+    /**
+     * Log refresh token rotation event.
+     * Tracks refresh token rotation for security monitoring.
+     */
+    public void logTokenRotation(String userId, String oldToken, String newToken, String clientIp) {
+        String eventKey = "security_events:TOKEN_ROTATION:" + System.currentTimeMillis();
+        String eventData = String.format(
+            "{\"event\":\"TOKEN_ROTATION\",\"userId\":\"%s\",\"oldTokenHash\":\"%s\",\"newTokenHash\":\"%s\",\"ip\":\"%s\",\"timestamp\":\"%s\"}", 
+            userId, 
+            Integer.toHexString(oldToken.hashCode()), 
+            Integer.toHexString(newToken.hashCode()), 
+            clientIp, 
+            LocalDateTime.now()
+        );
+        
+        redisTemplate.opsForValue().set(eventKey, eventData, Duration.ofDays(30));
+        updateDailyMetric("token_rotations");
+    }
+
+    /**
      * Get real-time security metrics.
      */
     public Map<String, Object> getSecurityMetrics() {

@@ -76,7 +76,7 @@ public class User extends BaseEntity {
     @Column
     private String backupCodes; // JSON Array as String
 
-    // Session management for automatic token generation
+    // Session management
     @Column
     private String currentSessionId;
 
@@ -85,16 +85,6 @@ public class User extends BaseEntity {
 
     @Column
     private String lastLoginIp;
-
-    // Token management fields
-    @Column
-    private String currentAccessToken;
-
-    @Column
-    private String currentRefreshToken;
-
-    @Column
-    private LocalDateTime tokenExpiresAt;
 
 
     /**
@@ -138,40 +128,10 @@ public class User extends BaseEntity {
     }
 
     /**
-     * Checks if the current access token is expired.
-     * @return true if token is expired or null, false otherwise
+     * Clears session information (used during logout).
+     * Note: Tokens are now managed in Redis, not in the database.
      */
-    public boolean isTokenExpired() {
-        return tokenExpiresAt == null || tokenExpiresAt.isBefore(LocalDateTime.now());
-    }
-
-    /**
-     * Checks if the user needs a new token (no token exists or current token is expired).
-     * @return true if new token is needed, false otherwise
-     */
-    public boolean needsNewToken() {
-        return currentAccessToken == null || currentRefreshToken == null || isTokenExpired();
-    }
-
-    /**
-     * Updates token information for automatic token management.
-     * @param accessToken the new access token
-     * @param refreshToken the new refresh token
-     * @param expiresAt when the token expires
-     */
-    public void updateTokens(String accessToken, String refreshToken, LocalDateTime expiresAt) {
-        this.currentAccessToken = accessToken;
-        this.currentRefreshToken = refreshToken;
-        this.tokenExpiresAt = expiresAt;
-    }
-
-    /**
-     * Clears all token information (used during logout).
-     */
-    public void clearTokens() {
-        this.currentAccessToken = null;
-        this.currentRefreshToken = null;
-        this.tokenExpiresAt = null;
+    public void clearSession() {
         this.currentSessionId = null;
     }
 

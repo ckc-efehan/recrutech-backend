@@ -23,9 +23,9 @@ public record JobPostingResponse(
         LocalDateTime expiresAt,
         boolean isDeleted,
         LocalDateTime createdAt,
-        String createdByUserId,
-        String updatedByUserId,
-        String deletedByUserId,
+        String createdByAccountId,
+        String updatedByAccountId,
+        String deletedByAccountId,
         LocalDateTime deletedAt
 ) {
 }

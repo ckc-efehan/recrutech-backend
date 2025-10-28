@@ -37,7 +37,7 @@ public record InterviewCreateRequest(
         String meetingLink,
 
         @Schema(description = "ID of the user who will conduct the interview", example = "22222222-2222-2222-2222-222222222222")
-        String interviewerUserId,
+        String interviewerAccountId,
 
         @Schema(description = "Description of the interview purpose or topics", example = "Technical interview focusing on backend development")
         @Size(max = 2000, message = "description must not exceed 2000 characters")

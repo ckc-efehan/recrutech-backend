@@ -1,6 +1,6 @@
 # Open Source Recruiting Technology Platform (Backend)
 
-**recrutech-backend** is a backend service built using Java and Spring Boot framework to manage recruitment and applicant tracking. It works together with the [recrutech-frontend](https://github.com/recrutech/recrutech-frontend) repository.
+**recrutech-backend** is a backend service built using Java and Spring Boot framework to manage recruitment and applicant tracking. It works together with the [recrutech-frontend](https://github.com/ckc-efehan/recrutech-frontend) repository.
 
 ## Architecture
 

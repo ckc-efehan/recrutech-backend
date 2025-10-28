@@ -26,11 +26,23 @@
     <!-- Step 1: Create companies table (no dependencies) -->
     <include file="/db.changelog/v1.0/02-create-companies-table.xml"/>
 
+    <!-- Step 1.1: Add missing columns to companies table -->
+    <include file="/db.changelog/v1.0/04-add-missing-companies-columns.xml"/>
+
     <!-- Step 2: Create applicants table (no dependencies) -->
     <include file="/db.changelog/v1.0/01-create-applicants-table.xml"/>
 
+    <!-- Step 2.1: Add missing columns to applicants table -->
+    <include file="/db.changelog/v1.0/02-add-missing-applicants-columns.xml"/>
+
     <!-- Step 3: Create hr_employees table (depends on companies) -->
     <include file="/db.changelog/v1.0/03-create-hr-employees-table.xml"/>
+
+    <!-- Step 3.1: Add missing columns to hr_employees table -->
+    <include file="/db.changelog/v1.0/05-add-missing-hr-employees-columns.xml"/>
+
+    <!-- Step 4: Create processed_event table for idempotent event handling -->
+    <include file="/db.changelog/v1.0/06-create-processed-event-table.xml"/>
 
     <!-- 
     ========================================

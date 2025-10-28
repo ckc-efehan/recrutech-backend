@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Add Missing Columns to Companies Table
+# Version: 1.0.1
+# Author: System Migration
+# Description: Adds missing columns to the companies table to match the Company entity
+# 
+# This migration adds columns that were missing from the initial table creation:
+# - account_id: Reference to the company user account (required)
+# - contact_email: Primary contact email from user registration (required)
+# - email_verified: Whether the email has been verified (default false)
+# - active: Whether the company profile is active (default true)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="04-add-missing-companies-columns" author="system-migration">
+        <comment>
+            Add missing columns to companies table to match the Company entity definition:
+            - account_id: Reference to company user account in auth service
+            - contact_email: Primary contact email from registration
+            - email_verified: Email verification status
+            - active: Company profile active status
+        </comment>
+
+        <!-- Add account_id column (reference to company user account) -->
+        <addColumn tableName="companies">
+            <column name="account_id" type="CHAR(36)" afterColumn="id">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add contact_email column -->
+        <addColumn tableName="companies">
+            <column name="contact_email" type="VARCHAR(254)" afterColumn="account_id">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add email_verified column -->
+        <addColumn tableName="companies">
+            <column name="email_verified" type="BOOLEAN" defaultValueBoolean="false" afterColumn="verified">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add active column -->
+        <addColumn tableName="companies">
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true" afterColumn="email_verified">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="companies" columnName="active"/>
+            <dropColumn tableName="companies" columnName="email_verified"/>
+            <dropColumn tableName="companies" columnName="contact_email"/>
+            <dropColumn tableName="companies" columnName="account_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

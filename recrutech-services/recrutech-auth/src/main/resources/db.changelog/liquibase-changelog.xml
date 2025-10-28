@@ -40,6 +40,9 @@
     
     <!-- Step 1: Create core authentication infrastructure -->
     <include file="/db.changelog/v0.1/01-create-users-table.xml"/>
+    
+    <!-- Step 2: Create event outbox for reliable event publishing -->
+    <include file="/db.changelog/v0.1/02-create-event-outbox-table.xml"/>
 
     <!-- 
     ========================================

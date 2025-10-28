@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Processed Event Table Creation
+# Version: 1.0.2
+# Author: System Migration
+# Description: Creates the processed_event table for idempotent event handling
+# 
+# This table tracks processed events from Kafka to ensure idempotent event handling.
+# It prevents duplicate processing of events during replays or retries.
+# The eventId serves as the idempotency key.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="06-create-processed-event-table" author="system-migration">
+        <comment>
+            Create processed_event table for tracking processed events.
+            Ensures idempotent event handling from Kafka consumers.
+            Prevents duplicate processing during replays or retries.
+        </comment>
+
+        <createTable tableName="processed_event">
+            <!-- Primary Key -->
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Idempotency Key -->
+            <column name="event_id" type="VARCHAR(36)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <!-- Event Metadata -->
+            <column name="event_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Processing Information -->
+            <column name="processed_at" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="related_entity_id" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="status" type="VARCHAR(20)" defaultValue="PROCESSED">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="error_message" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+
+            <column name="attempts" type="INT" defaultValueNumeric="1">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Indexes for Performance -->
+        <createIndex indexName="idx_processed_event_id" tableName="processed_event" unique="true">
+            <column name="event_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_processed_event_type_time" tableName="processed_event">
+            <column name="event_type"/>
+            <column name="processed_at"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_processed_event_type_time" tableName="processed_event"/>
+            <dropIndex indexName="idx_processed_event_id" tableName="processed_event"/>
+            <dropTable tableName="processed_event"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

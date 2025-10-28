@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+# Add Missing Columns to Applicants Table
+# Version: 1.0.1
+# Author: System Migration
+# Description: Adds missing columns to the applicants table to match the Applicant entity
+# 
+# This migration adds columns that were missing from the initial table creation:
+# - email: User's email address (required)
+# - first_name: User's first name (required)
+# - last_name: User's last name (required)
+# - email_verified: Whether the email has been verified (default false)
+# - active: Whether the applicant profile is active (default true)
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog 
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="02-add-missing-applicants-columns" author="system-migration">
+        <comment>
+            Add missing columns to applicants table to match the Applicant entity definition:
+            - email: User's email address
+            - first_name: User's first name
+            - last_name: User's last name
+            - email_verified: Email verification status
+            - active: Profile active status
+        </comment>
+
+        <!-- Add email column -->
+        <addColumn tableName="applicants">
+            <column name="email" type="VARCHAR(254)" afterColumn="account_id">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add first_name column -->
+        <addColumn tableName="applicants">
+            <column name="first_name" type="VARCHAR(100)" afterColumn="email">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add last_name column -->
+        <addColumn tableName="applicants">
+            <column name="last_name" type="VARCHAR(100)" afterColumn="first_name">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add email_verified column -->
+        <addColumn tableName="applicants">
+            <column name="email_verified" type="BOOLEAN" defaultValueBoolean="false" afterColumn="profile_complete">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <!-- Add active column -->
+        <addColumn tableName="applicants">
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true" afterColumn="email_verified">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="applicants" columnName="active"/>
+            <dropColumn tableName="applicants" columnName="email_verified"/>
+            <dropColumn tableName="applicants" columnName="last_name"/>
+            <dropColumn tableName="applicants" columnName="first_name"/>
+            <dropColumn tableName="applicants" columnName="email"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

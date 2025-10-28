@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Authentication Core Module - Event Outbox Table
+# Version: 1.0.0
+# Author: Efehan Cekic
+# Description: Creates the event_outbox table for the Transactional Outbox Pattern
+# Database: PostgreSQL
+# Dependencies: None
+# 
+# The Outbox Pattern ensures reliable event publishing with transactional guarantees.
+# Events are first stored in this table within the same transaction as business operations,
+# then asynchronously published to Kafka by a background scheduler.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Create event_outbox table for Transactional Outbox Pattern -->
+    <changeSet id="create-event-outbox-table-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates the event_outbox table for reliable event publishing:
+            - Stores events in the same transaction as business operations
+            - Ensures no event loss even if Kafka is temporarily unavailable
+            - Provides transactional guarantees between DB changes and events
+            - Supports idempotency via eventId
+            - Tracks event lifecycle (PENDING -> PROCESSING -> PUBLISHED/FAILED)
+        </comment>
+        
+        <createTable tableName="event_outbox">
+            <!-- Primary Key (Auto-increment) -->
+            <column name="id" type="bigserial" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            
+            <!-- Event Identity (Idempotency Key) -->
+            <column name="event_id" type="varchar(36)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            
+            <!-- Event Metadata -->
+            <column name="event_type" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Kafka Configuration -->
+            <column name="topic" type="varchar(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="partition_key" type="varchar(100)"/>
+            
+            <!-- Event Data -->
+            <column name="payload" type="text">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Event Status Tracking -->
+            <column name="status" type="varchar(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Timestamps -->
+            <column name="created_at" type="timestamp" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="timestamp"/>
+            <column name="last_attempt_at" type="timestamp"/>
+            
+            <!-- Retry Management -->
+            <column name="attempts" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_error" type="text"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Create performance indexes for event_outbox table -->
+    <changeSet id="create-event-outbox-indexes-v1.0" author="efehan.cekic@student.htw-berlin.de">
+        <comment>
+            Creates essential indexes for the event_outbox table:
+            - Composite index on (status, created_at) for efficient pending event queries
+            - Unique index on event_id for idempotency checks
+        </comment>
+        
+        <!-- Composite index for finding pending/processing events ordered by creation time -->
+        <createIndex tableName="event_outbox" indexName="idx_outbox_status_created">
+            <column name="status"/>
+            <column name="created_at"/>
+        </createIndex>
+        
+        <!-- Unique index for event_id (idempotency key) -->
+        <createIndex tableName="event_outbox" indexName="idx_outbox_event_id" unique="true">
+            <column name="event_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

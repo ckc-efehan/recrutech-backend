@@ -1,15 +1,12 @@
 package com.recrutech.recrutechauth.controller;
 
 import com.recrutech.recrutechauth.security.KeyRotationService;
-import io.jsonwebtoken.io.Encoders;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.crypto.SecretKey;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 

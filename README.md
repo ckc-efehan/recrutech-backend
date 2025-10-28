@@ -23,7 +23,7 @@ mvn package
 
 To develop or start this project locally, you need:
 
-- Java 21 or higher
+- Java 25 or higher
 - Maven 3.8.1 or higher
 - Docker or Podman to start containers
 

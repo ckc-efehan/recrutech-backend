@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Entity representing an applicant in the system.
@@ -20,6 +21,15 @@ public class Applicant extends BaseEntity {
     @Column(nullable = false, columnDefinition = "CHAR(36)")
     private String accountId; // Reference to User account in auth service
 
+    @Column(nullable = false)
+    private String email;
+    
+    @Column(nullable = false)
+    private String firstName;
+    
+    @Column(nullable = false)
+    private String lastName;
+
     private String phoneNumber;
     
     private LocalDate dateOfBirth;
@@ -32,6 +42,15 @@ public class Applicant extends BaseEntity {
 
     @Column(nullable = false)
     private boolean profileComplete = false;
+
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(nullable = false)
+    private boolean active = true;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
 
     /**
      * Initializes the entity by ensuring it has an ID and creation timestamp.

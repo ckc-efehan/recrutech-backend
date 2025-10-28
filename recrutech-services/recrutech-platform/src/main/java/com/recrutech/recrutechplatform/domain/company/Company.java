@@ -17,25 +17,31 @@ import java.time.LocalDateTime;
 @Setter
 public class Company extends BaseEntity {
 
+    @Column(nullable = false, columnDefinition = "CHAR(36)")
+    private String accountId; // Reference to User account in auth service (company admin)
+
     @Column(nullable = false)
+    private String contactEmail; // Primary contact email from user registration
+
+    @Column
     private String name;
 
-    @Column(nullable = false)
+    @Column
     private String location;
     
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String businessEmail;
 
-    @Column(nullable = false)
+    @Column
     private String contactFirstName;
 
-    @Column(nullable = false)
+    @Column
     private String contactLastName;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String telephone;
 
-    @Column(nullable = false, columnDefinition = "CHAR(36)")
+    @Column(columnDefinition = "CHAR(36)")
     private String adminAccountId; // Reference to the admin User account in auth service
 
     @Column(nullable = false)
@@ -46,6 +52,15 @@ public class Company extends BaseEntity {
 
     @Column
     private LocalDateTime verificationExpiry;
+
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(nullable = false)
+    private boolean active = true;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
 
     /**
      * Initializes the entity by ensuring it has an ID and creation timestamp.

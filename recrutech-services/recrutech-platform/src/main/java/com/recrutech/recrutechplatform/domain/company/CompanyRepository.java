@@ -13,6 +13,13 @@ import java.util.Optional;
 public interface CompanyRepository extends JpaRepository<Company, String> {
 
     /**
+     * Find company by account ID.
+     * @param accountId the account ID from auth service
+     * @return Optional containing the company if found
+     */
+    Optional<Company> findByAccountId(String accountId);
+
+    /**
      * Find company by admin account ID.
      * @param adminAccountId the admin account ID from auth service
      * @return Optional containing the company if found

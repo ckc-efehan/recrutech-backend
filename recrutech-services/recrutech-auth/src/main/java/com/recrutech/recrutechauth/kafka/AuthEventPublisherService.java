@@ -1,23 +1,24 @@
 package com.recrutech.recrutechauth.kafka;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.recrutech.common.event.*;
 import com.recrutech.recrutechauth.model.User;
+import com.recrutech.recrutechauth.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.CompletableFuture;
 
 /**
- * Kafka producer service for publishing auth domain events.
- * Publishes events that platform service consumes to maintain domain entities.
+ * Service for publishing auth domain events using the Outbox Pattern.
+ * Events are stored transactionally in the outbox table, then asynchronously
+ * published to Kafka by the OutboxPublisher scheduler.
+ * 
+ * <p>This ensures transactional guarantees: events are never lost even if
+ * Kafka is unavailable, and events are published if and only if the
+ * business transaction commits successfully.</p>
  * 
  * Events published:
  * - UserRegisteredEvent: When a new user account is created
@@ -30,8 +31,7 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class AuthEventPublisherService {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private final OutboxService outboxService;
 
     @Value("${recrutech.kafka.topics.user-registered:auth.user.registered}")
     private String userRegisteredTopic;
@@ -49,180 +49,108 @@ public class AuthEventPublisherService {
      * Publishes a UserRegisteredEvent when a new user account is created.
      * Platform service consumes this to create corresponding domain entities.
      * 
+     * <p>Uses the Outbox Pattern for reliable, transactional event publishing.</p>
+     * 
      * @param user The newly registered user
      * @param registrationContext Additional context (e.g., companyId for HR, company data for admin)
      */
+    @Transactional
     public void publishUserRegisteredEvent(User user, String registrationContext) {
-        log.info("[AUTH_EVENT] Publishing UserRegisteredEvent for accountId: {}, role: {}", 
+        log.info("[AUTH_EVENT] Storing UserRegisteredEvent in outbox for accountId: {}, role: {}", 
                 user.getId(), user.getRole());
         
-        try {
-            UserRegisteredEvent event = new UserRegisteredEvent(
-                user.getId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getRole().name(),
-                user.getCreatedAt() != null ? user.getCreatedAt() : LocalDateTime.now(),
-                registrationContext
-            );
+        UserRegisteredEvent event = new UserRegisteredEvent(
+            user.getId(),
+            user.getEmail(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getRole().name(),
+            user.getCreatedAt() != null ? user.getCreatedAt() : LocalDateTime.now(),
+            registrationContext
+        );
 
-            String eventJson = objectMapper.writeValueAsString(event);
-            
-            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
-                userRegisteredTopic,
-                user.getId(), // Use accountId as partition key
-                eventJson
-            );
-            
-            if (future != null) {
-                future.whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("[AUTH_EVENT] UserRegisteredEvent published successfully for accountId: {}", 
-                                user.getId());
-                    } else {
-                        log.error("[AUTH_EVENT] Failed to publish UserRegisteredEvent for accountId: {}. Error: {}", 
-                                 user.getId(), ex.getMessage(), ex);
-                    }
-                });
-            }
-
-        } catch (JsonProcessingException e) {
-            log.error("[AUTH_EVENT] Failed to serialize UserRegisteredEvent for accountId: {}. Error: {}", 
-                     user.getId(), e.getMessage(), e);
-        }
+        outboxService.storeEvent(event, userRegisteredTopic, user.getId());
+        
+        log.info("[AUTH_EVENT] UserRegisteredEvent stored in outbox for accountId: {}, eventId: {}", 
+                user.getId(), event.getEventId());
     }
 
     /**
      * Publishes an EmailVerifiedEvent when a user verifies their email.
      * 
+     * <p>Uses the Outbox Pattern for reliable, transactional event publishing.</p>
+     * 
      * @param user The user who verified their email
      */
+    @Transactional
     public void publishEmailVerifiedEvent(User user) {
-        log.info("[AUTH_EVENT] Publishing EmailVerifiedEvent for accountId: {}", user.getId());
+        log.info("[AUTH_EVENT] Storing EmailVerifiedEvent in outbox for accountId: {}", user.getId());
         
-        try {
-            EmailVerifiedEvent event = new EmailVerifiedEvent(
-                user.getId(),
-                user.getEmail(),
-                LocalDateTime.now()
-            );
+        EmailVerifiedEvent event = new EmailVerifiedEvent(
+            user.getId(),
+            user.getEmail(),
+            LocalDateTime.now()
+        );
 
-            String eventJson = objectMapper.writeValueAsString(event);
-            
-            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
-                emailVerifiedTopic,
-                user.getId(),
-                eventJson
-            );
-            
-            if (future != null) {
-                future.whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("[AUTH_EVENT] EmailVerifiedEvent published successfully for accountId: {}", 
-                                user.getId());
-                    } else {
-                        log.error("[AUTH_EVENT] Failed to publish EmailVerifiedEvent for accountId: {}. Error: {}", 
-                                 user.getId(), ex.getMessage(), ex);
-                    }
-                });
-            }
-
-        } catch (JsonProcessingException e) {
-            log.error("[AUTH_EVENT] Failed to serialize EmailVerifiedEvent for accountId: {}. Error: {}", 
-                     user.getId(), e.getMessage(), e);
-        }
+        outboxService.storeEvent(event, emailVerifiedTopic, user.getId());
+        
+        log.info("[AUTH_EVENT] EmailVerifiedEvent stored in outbox for accountId: {}, eventId: {}", 
+                user.getId(), event.getEventId());
     }
 
     /**
      * Publishes a RoleChangedEvent when a user's role is changed.
+     * 
+     * <p>Uses the Outbox Pattern for reliable, transactional event publishing.</p>
      * 
      * @param accountId The account ID
      * @param oldRole The previous role
      * @param newRole The new role
      * @param changedBy The accountId of who made the change (or SYSTEM)
      */
+    @Transactional
     public void publishRoleChangedEvent(String accountId, String oldRole, String newRole, String changedBy) {
-        log.info("[AUTH_EVENT] Publishing RoleChangedEvent for accountId: {} from {} to {}", 
+        log.info("[AUTH_EVENT] Storing RoleChangedEvent in outbox for accountId: {} from {} to {}", 
                 accountId, oldRole, newRole);
         
-        try {
-            RoleChangedEvent event = new RoleChangedEvent(
-                accountId,
-                oldRole,
-                newRole,
-                LocalDateTime.now(),
-                changedBy
-            );
+        RoleChangedEvent event = new RoleChangedEvent(
+            accountId,
+            oldRole,
+            newRole,
+            LocalDateTime.now(),
+            changedBy
+        );
 
-            String eventJson = objectMapper.writeValueAsString(event);
-            
-            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
-                roleChangedTopic,
-                accountId,
-                eventJson
-            );
-            
-            if (future != null) {
-                future.whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("[AUTH_EVENT] RoleChangedEvent published successfully for accountId: {}", 
-                                accountId);
-                    } else {
-                        log.error("[AUTH_EVENT] Failed to publish RoleChangedEvent for accountId: {}. Error: {}", 
-                                 accountId, ex.getMessage(), ex);
-                    }
-                });
-            }
-
-        } catch (JsonProcessingException e) {
-            log.error("[AUTH_EVENT] Failed to serialize RoleChangedEvent for accountId: {}. Error: {}", 
-                     accountId, e.getMessage(), e);
-        }
+        outboxService.storeEvent(event, roleChangedTopic, accountId);
+        
+        log.info("[AUTH_EVENT] RoleChangedEvent stored in outbox for accountId: {}, eventId: {}", 
+                accountId, event.getEventId());
     }
 
     /**
      * Publishes an AccountDisabledEvent when an account is disabled.
      * 
+     * <p>Uses the Outbox Pattern for reliable, transactional event publishing.</p>
+     * 
      * @param accountId The account ID
      * @param reason The reason for disabling
      * @param disabledBy The accountId of who disabled it (or SYSTEM)
      */
+    @Transactional
     public void publishAccountDisabledEvent(String accountId, String reason, String disabledBy) {
-        log.info("[AUTH_EVENT] Publishing AccountDisabledEvent for accountId: {}, reason: {}", 
+        log.info("[AUTH_EVENT] Storing AccountDisabledEvent in outbox for accountId: {}, reason: {}", 
                 accountId, reason);
         
-        try {
-            AccountDisabledEvent event = new AccountDisabledEvent(
-                accountId,
-                reason,
-                LocalDateTime.now(),
-                disabledBy
-            );
+        AccountDisabledEvent event = new AccountDisabledEvent(
+            accountId,
+            reason,
+            LocalDateTime.now(),
+            disabledBy
+        );
 
-            String eventJson = objectMapper.writeValueAsString(event);
-            
-            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
-                accountDisabledTopic,
-                accountId,
-                eventJson
-            );
-            
-            if (future != null) {
-                future.whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("[AUTH_EVENT] AccountDisabledEvent published successfully for accountId: {}", 
-                                accountId);
-                    } else {
-                        log.error("[AUTH_EVENT] Failed to publish AccountDisabledEvent for accountId: {}. Error: {}", 
-                                 accountId, ex.getMessage(), ex);
-                    }
-                });
-            }
-
-        } catch (JsonProcessingException e) {
-            log.error("[AUTH_EVENT] Failed to serialize AccountDisabledEvent for accountId: {}. Error: {}", 
-                     accountId, e.getMessage(), e);
-        }
+        outboxService.storeEvent(event, accountDisabledTopic, accountId);
+        
+        log.info("[AUTH_EVENT] AccountDisabledEvent stored in outbox for accountId: {}, eventId: {}", 
+                accountId, event.getEventId());
     }
 }

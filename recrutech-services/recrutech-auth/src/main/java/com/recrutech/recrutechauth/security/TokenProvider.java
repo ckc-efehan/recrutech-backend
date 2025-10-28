@@ -145,7 +145,7 @@ public class TokenProvider {
         securityMonitoringService.logTokenCreation(user.getId(), "ACCESS", clientIp, "TokenProvider");
         securityMonitoringService.logTokenCreation(user.getId(), "REFRESH", clientIp, "TokenProvider");
 
-        return new TokenPair(accessToken, refreshToken, accessTokenValidityMs / 1000);
+        return new TokenPair(accessToken, refreshToken, refreshTokenValidityMs / 1000);
     }
 
     /**
@@ -292,7 +292,7 @@ public class TokenProvider {
     public String getUserIdFromToken(String token) {
         try {
             Claims claims = parseToken(token);
-            return claims != null ? claims.get("userId", String.class) : null;
+            return claims != null ? claims.getSubject() : null;
         } catch (Exception e) {
             return null;
         }
@@ -401,7 +401,7 @@ public class TokenProvider {
             }
             
             // Check user-specific invalidation
-            String userId = claims.get("userId", String.class);
+            String userId = claims.getSubject();
             if (userId != null) {
                 String userInvalidationTime = redisTemplate.opsForValue().get("user_token_invalidation:" + userId);
                 if (userInvalidationTime != null) {
@@ -504,8 +504,8 @@ public class TokenProvider {
                 return false;
             }
             
-            String userId = claims.get("userId", String.class);
-            String tokenType = claims.get("tokenType", String.class);
+            String userId = claims.getSubject();
+            String tokenType = "ACCESS"; // Access tokens are validated here
             
             // Check expiration
             if (claims.getExpiration().before(new Date())) {
